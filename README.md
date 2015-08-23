@@ -15,7 +15,7 @@
 - Give 1 point for exploring some area that hasn't been explored in 1 min or something like that, diminishing returns
 for places that have already been explored. So if you explore the same place, then wait 10 seconds, you get like 15% of
 the reward. If you explore it immediately after you get a -1??
-- 
+- Have a "goal area" where we think the objective may be, give + some points for going towards it???
 
 
 
