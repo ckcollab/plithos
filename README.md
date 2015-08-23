@@ -6,7 +6,7 @@
 
 **PyGame installation**
 
-`brew install sdl sdl_image sdl_mixer sdl_ttf portmidi`
+`brew install sdl sdl_image sdl_mixer sdl_ttf portmidi hg`
 
 `pip install hg+http://bitbucket.org/pygame/pygame`
 
