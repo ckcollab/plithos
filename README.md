@@ -1,7 +1,14 @@
-plithos
-#######
+# plithos
 
-### Machine learning scoring
+## Installation
+
+### Mac
+
+**PyGame installation**
+`brew install sdl sdl_image sdl_mixer sdl_ttf portmidi`
+`pip install hg+http://bitbucket.org/pygame/pygame`
+
+# Machine learning scoring
 
 - Give 1 point for exploring some area that hasn't been explored in 1 min or something like that, diminishing returns
 for places that have already been explored. So if you explore the same place, then wait 10 seconds, you get like 15% of
