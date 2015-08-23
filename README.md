@@ -7,6 +7,7 @@
 **PyGame installation**
 
 `brew install sdl sdl_image sdl_mixer sdl_ttf portmidi`
+
 `pip install hg+http://bitbucket.org/pygame/pygame`
 
 # Machine learning scoring
