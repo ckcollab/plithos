@@ -55,7 +55,7 @@ class Drone(Entity):
     def __init__(self):
         super(Drone, self).__init__()
 
-        self.image = pygame.Surface((15, 15))
+        self.image = pygame.Surface((16, 16))
         self.image.set_colorkey((0, 0, 0))
         self.image.fill((0, 0, 0))
         # Drones start in bottom right
@@ -65,11 +65,12 @@ class Drone(Entity):
         )
 
         self.sensor_type = 'visible'
-        self.sensor_distance = 5
+        self.sensor_distance = 8
         #self.sensor = Sensor(self.sensor_distance)
 
-        #pygame.draw.circle(self.image, (255,0,0), (self.rect.x, self.rect.y), self.sensor_distance, 2)
-        pygame.draw.rect(self.image, pygame.color.Color('white'), (0, 0, 2, 2), 2)
+        # 7 is the middle of the width/height of rect
+        pygame.draw.circle(self.image, (255,0,0), (8, 8), self.sensor_distance, 1)
+        pygame.draw.rect(self.image, pygame.color.Color('white'), (7, 7, 1, 1), 1)
 
         # self.sensor_circle = pygame.Surface((5, 5))
         # pygame.draw.circle(self.sensor_circle, (255,0,0), (self.rect.x, self.rect.y), 5, 2)
