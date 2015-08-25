@@ -1,5 +1,7 @@
+import numpy as np
 import pygame
 
+from math import hypot
 from pygame import *
 from random import randint
 
@@ -52,10 +54,14 @@ class Entity(pygame.sprite.Sprite):
 
 class Drone(Entity):
 
-    def __init__(self):
+    def __init__(self, simulator, sensor_type='visible', sensor_distance=8):
         super(Drone, self).__init__()
+        self.simulator = simulator
+        self.sensor_type = sensor_type
+        self.sensor_distance = sensor_distance
 
-        self.image = pygame.Surface((16, 16))
+        # Make the sprite a big enough rectangle to display the sensor distance
+        self.image = pygame.Surface((self.sensor_distance * 2, self.sensor_distance * 2))
         self.image.set_colorkey((0, 0, 0))
         self.image.fill((0, 0, 0))
         # Drones start in bottom right
@@ -64,21 +70,42 @@ class Drone(Entity):
             randint(HEIGHT * .9, HEIGHT)
         )
 
-        self.sensor_type = 'visible'
-        self.sensor_distance = 8
-        #self.sensor = Sensor(self.sensor_distance)
+        # self.sensor_distance is
+        pygame.draw.circle(
+            self.image,
+            (100, 0, 0),  # light red color
+            (self.sensor_distance, self.sensor_distance),  # center of circle ??
+            self.sensor_distance,  # radius for the circle
+            1
+        )
 
-        # 7 is the middle of the width/height of rect
-        pygame.draw.circle(self.image, (255,0,0), (8, 8), self.sensor_distance, 1)
-        pygame.draw.rect(self.image, pygame.color.Color('white'), (7, 7, 1, 1), 1)
+        # Place the rectangle in the middle, -1 sensor distance so it is right in the center instead of offset
+        # to the bottom right
+        pygame.draw.rect(
+            self.image,
+            pygame.color.Color('white'),
+            (self.sensor_distance - 1, self.sensor_distance - 1, 1, 1),
+            1
+        )
 
-        # self.sensor_circle = pygame.Surface((5, 5))
-        # pygame.draw.circle(self.sensor_circle, (255,0,0), (self.rect.x, self.rect.y), 5, 2)
+    @property
+    def state(self):
+        '''Returns the area around the drone starting from the top left, skipping drones location, and
+        continues to the bottom right. Also, appends the distance to the target area as the last
+        element in the state list.'''
+        state = []
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                if x == 0 and y == 0:
+                    continue  # skip our location
+                print x, ",", y
+                state.append(self.simulator.map[self.x + x][self.y + y])
 
-    # def update(self):
-    #     super(Drone, self).update()
-    #     #self.sensor_image = pygame.Surface((self.sensor_distance, self.sensor_distance))
-    #     pygame.draw.circle(self.image, (255,0,0), (self.rect.x, self.rect.y), 50, 2)
+        # Also append distance to where goal was last seen
+        goal_last_seen_x = WIDTH * 0.05
+        goal_last_seen_y = HEIGHT * 0.05
+        state.append(hypot(goal_last_seen_x - self.x, goal_last_seen_y - self.y))
+        return state
 
 
 class Objective(Entity):
@@ -94,16 +121,32 @@ class Objective(Entity):
 class Simulator(object):
 
     def __init__(self):
-        self.drones = [Drone() for _ in range(10)]
+        self.drones = [Drone(self) for _ in range(10)]
         self.objectives = [Objective()]
         #self.sensors = [drone.sensor for drone in self.drones]
+        #self.map = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
+        self.update_map()
 
     def get_all_entities(self):
         return self.drones + self.objectives # + self.sensors
 
+    def update_map(self):
+        '''
+        Sets self.map points where drones/objectives exist.
+
+        A drone is a 1, an objective is a 2, 0 is nothing, -1 is explored
+        '''
+        self.map = np.zeros((WIDTH, HEIGHT), dtype=np.int)
+        for drone in self.drones:
+            self.map[drone.x, drone.y] = 1
+
+        for objective in self.objectives:
+            self.map[objective.x, objective.y] = 2
+
 
 
 def main():
+    # Setup pygame stuff
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 24)
     clock = pygame.time.Clock()
@@ -122,6 +165,21 @@ def main():
             if i.type == pygame.QUIT or (i.type == KEYDOWN and i.key == K_ESCAPE):
                 pygame.quit()
                 exit()
+
+        #
+        # for drone in simulator.drones:
+        #     # [up, down, left, right]
+        #     # unexplored [0, 0, 0, 0]
+        #     # explored [1, 1, 1, 1]
+        #     # input is: [
+        #     #     is explored [up, down, left, right],
+        #     #     sensor_found_objective [0, 1]
+        #     #     angle_to_goal_area [0-360]
+        #     #
+        #     # output is 'up', 'down', 'left', 'right'
+        #     classifier.partial_fit(state, decision, classes=('up', 'down', 'left', 'right'))
+
+
 
         # for drone in simulator.drones:
         #     pygame.draw.circle(screen, pygame.color.Color('blue'), (drone.rect.x, drone.rect.y), 50, 2)

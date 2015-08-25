@@ -24,6 +24,15 @@ the reward. If you explore it immediately after you get a -1??
 - Show sensor radius around drones
 
 
+# Getting state
+
+The state will be the entire map `(WIDTH, HEIGHT)` where:
+ - 0 is unexplored, nothing there
+ - 1 is a drone
+ - 2 is the objective
+ - < 0 is explored, but updated each tick. So -1 was just explored, -0.99 was explored 1 tick ago.. something like that
+
+
 
 
 ### Todo:
