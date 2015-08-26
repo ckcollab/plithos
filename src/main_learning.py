@@ -9,6 +9,7 @@ from math import hypot
 from pygame import *
 from random import randint, choice
 
+from utils import circle_iterator
 from vec2d import Vec2d
 
 
@@ -30,11 +31,11 @@ class Entity(pygame.sprite.Sprite):
 
     @property
     def x(self):
-        return self.rect.x
+        return self.rect.center[0]
 
     @property
     def y(self):
-        return self.rect.y
+        return self.rect.center[1]
     #def thrust(self, direction):
 
 
@@ -57,11 +58,11 @@ class Entity(pygame.sprite.Sprite):
 
 class Drone(Entity):
 
-    def __init__(self, simulator, sensor_type='visible', sensor_distance=8):
+    def __init__(self, simulator, sensor_type='visible', sensor_radius=8):
         super(Drone, self).__init__()
         self.simulator = simulator
         self.sensor_type = sensor_type
-        self.sensor_distance = sensor_distance
+        self.sensor_radius = sensor_radius
 
         # Keeping track of distance from target search area
         self.goal_last_seen_x = WIDTH * 0.05
@@ -70,21 +71,21 @@ class Drone(Entity):
         self.current_distance_from_target_area = 0
 
         # Make the sprite a big enough rectangle to display the sensor distance
-        self.image = pygame.Surface((self.sensor_distance * 2, self.sensor_distance * 2))
+        self.image = pygame.Surface((self.sensor_radius * 2, self.sensor_radius * 2))
         self.image.set_colorkey((0, 0, 0))
         self.image.fill((0, 0, 0))
         # Drones start in bottom right
         self.rect.center = (
-            randint(WIDTH * .9, WIDTH),
-            randint(HEIGHT * .9, HEIGHT)
+            randint(WIDTH * .5, WIDTH), #randint(WIDTH * .9, WIDTH),
+            randint(HEIGHT * .5, HEIGHT), #randint(HEIGHT * .9, HEIGHT)
         )
 
         # self.sensor_distance is
         pygame.draw.circle(
             self.image,
             (100, 0, 0),  # light red color
-            (self.sensor_distance, self.sensor_distance),  # center of circle ??
-            self.sensor_distance,  # radius for the circle
+            (self.sensor_radius, self.sensor_radius),  # center of circle ??
+            self.sensor_radius,  # radius for the circle
             1
         )
 
@@ -93,7 +94,7 @@ class Drone(Entity):
         pygame.draw.rect(
             self.image,
             pygame.color.Color('white'),
-            (self.sensor_distance - 1, self.sensor_distance - 1, 1, 1),
+            (self.sensor_radius - 1, self.sensor_radius - 1, 1, 1),
             1
         )
 
@@ -124,13 +125,15 @@ class Drone(Entity):
 
         # Are we closer?
         if self.current_distance_from_target_area < self._old_distance_from_target_area:
-            reward += 1
+            reward += 5
 
         # How many tiles in our sensor radius are unexplored?
-        for x, y, tile in self.get_tiles_within_sensor_radius():
+        for _, _, tile in self.get_tiles_within_sensor_radius():
             if tile == 0:
                 reward += 1
 
+        print "self x/y:", self.x, self.y
+        print "center x/y:", self.rect.center[0], self.rect.center[1]
         print "current reward: ", reward
         return reward
 
@@ -141,16 +144,21 @@ class Drone(Entity):
             self._old_distance_from_target_area = self.current_distance_from_target_area
         else:
             self._old_distance_from_target_area = hypot(
-                self.goal_last_seen_x - self.rect.x,
-                self.goal_last_seen_y - self.rect.y
+                self.goal_last_seen_x - self.x,
+                self.goal_last_seen_y - self.y
             )
 
-        # Mark our old tile as explored (-1 is explored)
+        # Mark old tile as explored, it was set tp 1 for drone
         try:
-            self.simulator.map[self.rect.x][self.rect.y] = -1
+            self.simulator.map[self.x + self.sensor_radius][self.y + self.sensor_radius] = -1
         except IndexError:
             pass
-        
+        # Put a pixel at the explored tile
+        self.simulator.explored_layer.fill(
+            Simulator.EXPLORED_MAP_COLOR,
+            ((self.x + self.sensor_radius, self.y + self.sensor_radius), (1, 1))
+        )
+
         if action == 'up':
             self.rect.y -= 1
         elif action == 'down':
@@ -162,35 +170,45 @@ class Drone(Entity):
 
         # Mark new tile as drone (1 means drone)
         try:
-            self.simulator.map[self.rect.x][self.rect.y] = 1
+            self.simulator.map[self.x + self.sensor_radius][self.y + self.sensor_radius] = 1
         except IndexError:
             pass
 
         self.current_distance_from_target_area = hypot(
-            self.goal_last_seen_x - self.rect.x,
-            self.goal_last_seen_y - self.rect.y
+            self.goal_last_seen_x - self.x,
+            self.goal_last_seen_y - self.y
         )
 
         # Mark explored tiles
+
+        # But, before marking them check what our reward was
+        self._get_current_reward()
+
+
         for x, y, tile in self.get_tiles_within_sensor_radius():
             # If the tile has not been explored and isn't a drone/objective (1/2), mark it as explored
             if tile <= 0:
-                self.simulator.map[x][y] = -1
-                # Put a pixel at the explored tile
-                self.simulator.explored_layer.fill((0, 255, 255), ((x, y), (1, 1)))
-                #self.simulator.explored_layer.fill((0, 250, 0))
-
-    def get_tiles_within_sensor_radius(self):
-        '''Returns (x, y, tile value)'''
-        sensor_distance_halved = self.sensor_distance / 2
-        for x in range(-1 * sensor_distance_halved, sensor_distance_halved):
-            for y in range(-1 * sensor_distance_halved, sensor_distance_halved):
-                if x == 0 and y == 0:
-                    continue  # skip our location
+                # Mark our old tile as explored (-1 is explored)
                 try:
-                    yield self.x + x, self.y + y, self.simulator.map[self.x + x][self.y + y]
+                    self.simulator.map[x][y] = -1
                 except IndexError:
                     pass
+                # Put a pixel at the explored tile
+                self.simulator.explored_layer.fill(
+                    Simulator.EXPLORED_MAP_COLOR,
+                    ((x, y), (1, 1))
+                )
+
+    def get_tiles_within_sensor_radius(self):
+        '''Returns (x, y, tile_value)'''
+        center_x, center_y = self.rect.center
+        for circle_x, circle_y in circle_iterator(center_x, center_y, self.sensor_radius):
+            try:
+                yield circle_x + self.sensor_radius, \
+                      circle_y + self.sensor_radius, \
+                      self.simulator.map[circle_x + self.sensor_radius][circle_y + self.sensor_radius]
+            except IndexError:
+                pass
 
 
 class Objective(Entity):
@@ -206,6 +224,7 @@ class Objective(Entity):
 
 class Simulator(object):
     ACTIONS = ('up', 'left', 'down', 'right')
+    EXPLORED_MAP_COLOR = (0, 100, 100)
 
     def __init__(self, screen):
         self.screen = screen
@@ -243,8 +262,8 @@ class Simulator(object):
         self.background.fill((0, 0, 0))  # black
         self.screen.blit(self.background, (0, 0))
 
-        #self.explored_layer = pygame.sprite.Sprite()
         self.explored_layer = pygame.Surface(self.screen.get_size())
+        self.explored_layer = self.explored_layer.convert()
         self.explored_layer.set_colorkey((0, 0, 0))
         self.explored_layer.fill((0, 0, 0))
 
@@ -473,7 +492,6 @@ def main():
             # drone.rect.x += randint(-1, 1)
             # drone.rect.y += randint(-1, 1)
             drone.move(choice(Simulator.ACTIONS))
-            drone._get_current_reward()
 
 
 
@@ -521,12 +539,15 @@ def main():
 
         # following the CUD Rule (Clear, Update, Draw)
         #simulator.background.fill((0, 0, 0))  # black
-        simulator.screen.blit(simulator.explored_layer, (0, 0))
+
         simulator.sprites.clear(screen, simulator.background)
+        #simulator.explored_layer.clear(screen)
         simulator.sprites.update()
+        simulator.screen.blit(simulator.explored_layer, (0, 0))
         simulator.sprites.draw(screen)
+
         pygame.display.flip()
-        clock.tick(30)
+        clock.tick(5)
 
 
 if __name__ == '__main__':
