@@ -135,12 +135,12 @@ class Drone(Entity):
 
         # Are we closer?
         if self.current_distance_from_target_area < self._old_distance_from_target_area:
-            reward += 5
+            reward += 2
 
         # How many tiles in our sensor radius are unexplored?
         for _, _, tile in self.get_tiles_within_sensor_radius():
             if tile == 0:
-                reward += 1
+                reward += 0.1
 
         # print "self x/y:", self.x, self.y
         # print "center x/y:", self.rect.center[0], self.rect.center[1]
@@ -249,9 +249,9 @@ class Simulator(object):
         '''
         self.map = np.zeros((WIDTH, HEIGHT), dtype=np.int)
         for drone in self.drones:
-            self.map[drone.x, drone.y] = 1
+            self.map[drone.x][drone.y] = 1
         for objective in self.objectives:
-            self.map[objective.x, objective.y] = 2
+            self.map[objective.x][objective.y] = 2
 
     def reset_game(self):
         self.drones = [Drone(self) for _ in range(1)]  # limit to 1 drone for now
@@ -390,15 +390,6 @@ def main():
 
 
 
-    simulator.reset_game()
-
-
-
-
-
-
-
-
 
     # Setup machine learning stuff
     # Taken from run_nature.py Defaults
@@ -446,9 +437,9 @@ def main():
         # WIDTH,  # defaults.RESIZED_WIDTH,
         # HEIGHT,  # defaults.RESIZED_HEIGHT,
         # #,  # parameters.resize_method,
-        5,#200,  # parameters.epochs,
-        10,#250000,  # parameters.steps_per_epoch,
-        100,#12500,  # parameters.steps_per_test,
+        20,#200,  # parameters.epochs,
+        1000,#250000,  # parameters.steps_per_epoch,
+        1000,#12500,  # parameters.steps_per_test,
         1,  # parameters.frame_skip,
         # ,  # parameters.death_ends_episode,
         # ,  # parameters.max_start_nullops,
@@ -471,6 +462,15 @@ def main():
 
     # Start with random action
     action = 2
+
+
+
+
+
+
+
+
+    simulator.reset_game()
 
 
 
@@ -509,7 +509,12 @@ def main():
 
         #action = self.agent.step(reward, simulator.map)
         reward = experiment._step(experiment.min_action_set[action])
+
+        print "Previous action:", action, simulator.ACTIONS[action], "reward =", reward
+
         action = experiment.agent.step(reward, experiment.simulator.map) # this sets action for the next time around
+
+
 
 
         simulator.sprites.clear(screen, simulator.background)
