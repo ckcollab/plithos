@@ -142,9 +142,9 @@ class Drone(Entity):
             if tile == 0:
                 reward += 1
 
-        print "self x/y:", self.x, self.y
-        print "center x/y:", self.rect.center[0], self.rect.center[1]
-        print "current reward: ", reward
+        # print "self x/y:", self.x, self.y
+        # print "center x/y:", self.rect.center[0], self.rect.center[1]
+        # print "current reward: ", reward
         self.reward = reward
 
     def _fill_in_explored_area(self):
@@ -277,20 +277,11 @@ class Simulator(object):
             self.sprites.add(entity)
 
     def act(self, action):
+        '''action is string like "right", "up"'''
         # we can't do multiple drones yet...
-        self.drones[0].do_action(self.ACTIONS[action])
+        self.drones[0].do_action(action)
         #self.update()
-
-
-
-        # TODO: return reward
-
-
-
-
-
-
-
+        return self.drones[0].reward
 
 
 class PlithosExperiment(object):
@@ -302,31 +293,31 @@ class PlithosExperiment(object):
         self.epoch_length = epoch_length
         self.test_length = test_length
         self.frame_skip = frame_skip
-        # self.min_action_set = ale.getMinimalActionSet()
+        self.min_action_set = simulator.ACTIONS # self.min_action_set = ale.getMinimalActionSet()
         # self.width, self.height = ale.getScreenDims()
 
         self.buffer_length = 2
         self.buffer_count = 0
-        self.screen_buffer = np.empty((self.buffer_length, WIDTH, HEIGHT),
-                                      dtype=np.uint8)
+        # self.screen_buffer = np.empty((self.buffer_length, WIDTH, HEIGHT),
+        #                               dtype=np.uint8)
 
         # self.terminal_lol = False # Most recent episode ended on a loss of life
         # self.max_start_nullops = max_start_nullops
         self.rng = rng
 
-    def run(self):
-        """
-        Run the desired number of training epochs, a testing epoch
-        is conducted after each training epoch.
-        """
-        for epoch in range(1, self.num_epochs + 1):
-            self.run_epoch(epoch, self.epoch_length)
-            self.agent.finish_epoch(epoch)
-
-            if self.test_length > 0:
-                self.agent.start_testing()
-                self.run_epoch(epoch, self.test_length, True)
-                self.agent.finish_testing(epoch)
+    # def run(self):
+    #     """
+    #     Run the desired number of training epochs, a testing epoch
+    #     is conducted after each training epoch.
+    #     """
+    #     for epoch in range(1, self.num_epochs + 1):
+    #         self.run_epoch(epoch, self.epoch_length)
+    #         self.agent.finish_epoch(epoch)
+    #
+    #         if self.test_length > 0:
+    #             self.agent.start_testing()
+    #             self.run_epoch(epoch, self.test_length, True)
+    #             self.agent.finish_testing(epoch)
 
     def run_epoch(self, epoch, num_steps, testing=False):
         """ Run one 'epoch' of training or testing, where an epoch is defined
@@ -343,7 +334,7 @@ class PlithosExperiment(object):
             prefix = "testing" if testing else "training"
             logging.info(prefix + " epoch: " + str(epoch) + " steps_left: " +
                          str(steps_left))
-            _, num_steps = self.run_episode(steps_left, testing)
+            num_steps = self.run_episode(steps_left, testing)
             steps_left -= num_steps
 
     def run_episode(self, max_steps, testing):
@@ -356,25 +347,24 @@ class PlithosExperiment(object):
         """
 
         #self._init_episode()
-        self.simulator.reset()
+        self.simulator.reset_game()
 
-        start_lives = self.ale.lives()
+        #start_lives = self.ale.lives()
 
-        action = self.agent.start_episode(self.get_observation())
+        action = self.agent.start_episode(self.simulator.map)#(self.get_observation())
         num_steps = 0
         while True:
             reward = self._step(self.min_action_set[action])
-            self.terminal_lol = (self.death_ends_episode and not testing and
-                                 self.ale.lives() < start_lives)
-            terminal = self.ale.game_over() or self.terminal_lol
+            # self.terminal_lol = (self.death_ends_episode and not testing and
+            #                      self.ale.lives() < start_lives)
+            # terminal = self.ale.game_over() or self.terminal_lol
             num_steps += 1
 
-            if terminal or num_steps >= max_steps:
-                self.agent.end_episode(reward, terminal)
+            if num_steps >= max_steps:
                 break
 
-            action = self.agent.step(reward, self.get_observation())
-        return terminal, num_steps
+            action = self.agent.step(reward, self.simulator.map)
+        return num_steps
 
     def _step(self, action):
         """ Repeat one action the appopriate number of times and return
@@ -382,7 +372,6 @@ class PlithosExperiment(object):
         reward = 0
         for _ in range(self.frame_skip):
             reward += self.simulator.act(action)
-
         return reward
 
 
@@ -411,66 +400,87 @@ def main():
 
 
 
-    # # Setup machine learning stuff
-    # # Taken from run_nature.py Defaults
-    # network = DeepQLearner(
-    #     WIDTH,  # input_width
-    #     HEIGHT,  # input_height
-    #     len(Simulator.ACTIONS),  # num_actions
-    #     4,  # num_frames
-    #     0.99,  # discount
-    #     0.00025,  # learning_rate
-    #     0.95,  # rho
-    #     0.01,  # rms_epsilon
-    #     0,  # momentum
-    #     1.0,  # clip_delta
-    #     10000,  # freeze_interval
-    #     32,  # batch_size
-    #     'nature_dnn',  # network_type
-    #     'deepmind_rmsprop',  # update_rule
-    #     'sum',  # batch_accumulator
-    #     np.random.RandomState(),  # rng
-    # )
-    #
-    # agent = NeuralAgent(
-    #     network,  # network,
-    #     1.0,  # parameters.epsilon_start,
-    #     0.1,  # parameters.epsilon_min,
-    #     1000000,  # parameters.epsilon_decay,
-    #     1000000,  # parameters.replay_memory_size,
-    #     None,  # parameters.experiment_prefix,
-    #     50000,  # parameters.replay_start_size,
-    #     4,  # parameters.update_frequency,
-    #     np.random.RandomState(),  # rng
-    # )
-    #
-    #
-    # # Need to implement:
-    # # $$ WE CAN JUST PASS IT SIMULATOR!? $$
-    # # ale.game_over() returns true for drone in drones: if drone.distance_from(objective) < drone.sensor_distance\
-    # # ale.reset_game()
-    #
-    # experiment = PlithosExperiment(
-    #     # ale
-    #     simulator,
-    #     agent,  # agent,
-    #     # WIDTH,  # defaults.RESIZED_WIDTH,
-    #     # HEIGHT,  # defaults.RESIZED_HEIGHT,
-    #     # #,  # parameters.resize_method,
-    #     200,  # parameters.epochs,
-    #     250000,  # parameters.steps_per_epoch,
-    #     12500,  # parameters.steps_per_test,
-    #     4,  # parameters.frame_skip,
-    #     # ,  # parameters.death_ends_episode,
-    #     # ,  # parameters.max_start_nullops,
-    #     np.random.RandomState(),  # rng
-    # )
+    # Setup machine learning stuff
+    # Taken from run_nature.py Defaults
+    network = DeepQLearner(
+        WIDTH,  # input_width
+        HEIGHT,  # input_height
+        len(Simulator.ACTIONS),  # num_actions
+        4,  # num_frames
+        0.99,  # discount
+        0.00025,  # learning_rate
+        0.95,  # rho
+        0.01,  # rms_epsilon
+        0,  # momentum
+        1.0,  # clip_delta
+        10000,  # freeze_interval
+        32,  # batch_size
+        'linear',  # network_type
+        'deepmind_rmsprop',  # update_rule
+        'sum',  # batch_accumulator
+        np.random.RandomState(),  # rng
+    )
+
+    agent = NeuralAgent(
+        network,  # network,
+        1.0,  # parameters.epsilon_start,
+        0.1,  # parameters.epsilon_min,
+        1000000,  # parameters.epsilon_decay,
+        1000000,  # parameters.replay_memory_size,
+        None,  # parameters.experiment_prefix,
+        50000,  # parameters.replay_start_size,
+        4,  # parameters.update_frequency,
+        np.random.RandomState(),  # rng
+    )
+
+
+    # Need to implement:
+    # $$ WE CAN JUST PASS IT SIMULATOR!? $$
+    # ale.game_over() returns true for drone in drones: if drone.distance_from(objective) < drone.sensor_distance\
+    # ale.reset_game()
+
+    experiment = PlithosExperiment(
+        # ale
+        simulator,
+        agent,  # agent,
+        # WIDTH,  # defaults.RESIZED_WIDTH,
+        # HEIGHT,  # defaults.RESIZED_HEIGHT,
+        # #,  # parameters.resize_method,
+        5,#200,  # parameters.epochs,
+        10,#250000,  # parameters.steps_per_epoch,
+        100,#12500,  # parameters.steps_per_test,
+        1,  # parameters.frame_skip,
+        # ,  # parameters.death_ends_episode,
+        # ,  # parameters.max_start_nullops,
+        np.random.RandomState(),  # rng
+    )
+
+    print "@" * 80
+    print "Begin training..."
+
+    epoch_count = 1
+    experiment.run_epoch(epoch_count, experiment.epoch_length)
+
+    if experiment.test_length > 0:
+        experiment.agent.start_testing()
+        experiment.run_epoch(epoch_count, experiment.test_length, True)
+
+    print "training completed!"
+    print "@" * 80
+
+
+    # Start with random action
+    action = 2
+
+
+
 
     while 1:
         for i in pygame.event.get():
             if i.type == pygame.QUIT or (i.type == KEYDOWN and i.key == K_ESCAPE):
                 pygame.quit()
                 exit()
+
 
         #
         # for drone in simulator.drones:
@@ -492,66 +502,23 @@ def main():
 
 
         # Randomly moving
-        for drone in simulator.drones:
-            # drone.rect.x += randint(-1, 1)
-            # drone.rect.y += randint(-1, 1)
-            drone.do_action(choice(Simulator.ACTIONS))
-
-
-
-
-
-
-        # Inputs:
-        # Sensor data, 1 input binary: was something found?
-        # Area data, 4 input directions: in each direction, is it explored?
-        #
-
-
-
-
-
-
-
-
-
-
-        # Moving with acceleration
-        # dt = float(clock.get_time()) / 100
-        # print dt
         # for drone in simulator.drones:
-        #     drone.rect.x += drone.velocity_x * dt
-        #     drone.rect.y += drone.velocity_y * dt
-        #     drone.velocity_x += drone.acceleration_x * dt
-        #     drone.velocity_y += drone.acceleration_y * dt
-            # drone.acceleration_x -= drone.friction
-            # drone.acceleration_y -= drone.friction
+        #     # drone.rect.x += randint(-1, 1)
+        #     # drone.rect.y += randint(-1, 1)
+        #     drone.do_action(choice(Simulator.ACTIONS))
 
-            # drone.rect.x += drone.velocity_x
-            # drone.rect.y += drone.velocity_y
-            #
-            # if drone.velocity_x > 0:
-            #     drone.velocity_x = drone.velocity_x - drone.friction
-            # else:
-            #     drone.velocity_x = drone.velocity_x + drone.friction
-            #
-            # if drone.velocity_y > 0:
-            #     drone.velocity_y = drone.velocity_y - drone.friction
-            # else:
-            #     drone.velocity_y = drone.velocity_y + drone.friction
+        #action = self.agent.step(reward, simulator.map)
+        reward = experiment._step(experiment.min_action_set[action])
+        action = experiment.agent.step(reward, experiment.simulator.map) # this sets action for the next time around
 
-
-        # following the CUD Rule (Clear, Update, Draw)
-        #simulator.background.fill((0, 0, 0))  # black
 
         simulator.sprites.clear(screen, simulator.background)
-        #simulator.explored_layer.clear(screen)
         simulator.sprites.update()
         simulator.screen.blit(simulator.explored_layer, (0, 0))
         simulator.sprites.draw(screen)
 
         pygame.display.flip()
-        clock.tick(5)
+        clock.tick(10)
 
 
 if __name__ == '__main__':

@@ -4,11 +4,15 @@
 
 ### Mac
 
-**PyGame installation**
+Install PyGame:
 
 `brew install sdl sdl_image sdl_mixer sdl_ttf portmidi hg`
 
 `pip install hg+http://bitbucket.org/pygame/pygame`
+
+Install cuDNN:
+
+[Instructions here](http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html)
 
 # Machine learning scoring
 
