@@ -98,6 +98,16 @@ class Drone(Entity):
             1
         )
 
+    def _move(self, direction):
+        if direction == 'up':
+            self.rect.y -= 1
+        elif direction == 'down':
+            self.rect.y += 1
+        elif direction == 'left':
+            self.rect.x -= 1
+        elif direction == 'right':
+            self.rect.x += 1
+
     # @property
     # def state(self):
     #     '''Returns the area around the drone starting from the top left, skipping drones location, and
@@ -135,10 +145,27 @@ class Drone(Entity):
         print "self x/y:", self.x, self.y
         print "center x/y:", self.rect.center[0], self.rect.center[1]
         print "current reward: ", reward
-        return reward
+        self.reward = reward
 
-    def move(self, action):
-        '''Move to the new tile but record old reward and get new one. Also mark explored tiles'''
+    def _fill_in_explored_area(self):
+        for x, y, tile in self.get_tiles_within_sensor_radius():
+            # If the tile has not been explored and isn't a drone/objective (1/2), mark it as explored
+            if tile <= 0:
+                # Mark our old tile as explored (-1 is explored)
+                try:
+                    self.simulator.map[x][y] = -1
+                except IndexError:
+                    pass
+                # Put a pixel at the explored tile
+                self.simulator.explored_layer.fill(
+                    Simulator.EXPLORED_MAP_COLOR,
+                    ((x, y), (1, 1))
+                )
+
+    def do_action(self, action):
+        '''Move to the new tile but record old reward and get new one. Also mark explored tiles.
+
+        action is a direction from Simulator.ACTIONS'''
         # Save old distance
         if self.current_distance_from_target_area != 0:
             self._old_distance_from_target_area = self.current_distance_from_target_area
@@ -159,14 +186,7 @@ class Drone(Entity):
             ((self.x + self.sensor_radius, self.y + self.sensor_radius), (1, 1))
         )
 
-        if action == 'up':
-            self.rect.y -= 1
-        elif action == 'down':
-            self.rect.y += 1
-        elif action == 'left':
-            self.rect.x -= 1
-        elif action == 'right':
-            self.rect.x += 1
+        self._move(action)  # action is a direction here
 
         # Mark new tile as drone (1 means drone)
         try:
@@ -179,25 +199,9 @@ class Drone(Entity):
             self.goal_last_seen_y - self.y
         )
 
-        # Mark explored tiles
-
-        # But, before marking them check what our reward was
+        # Mark explored tiles; but, before marking them check what our reward was
         self._get_current_reward()
-
-
-        for x, y, tile in self.get_tiles_within_sensor_radius():
-            # If the tile has not been explored and isn't a drone/objective (1/2), mark it as explored
-            if tile <= 0:
-                # Mark our old tile as explored (-1 is explored)
-                try:
-                    self.simulator.map[x][y] = -1
-                except IndexError:
-                    pass
-                # Put a pixel at the explored tile
-                self.simulator.explored_layer.fill(
-                    Simulator.EXPLORED_MAP_COLOR,
-                    ((x, y), (1, 1))
-                )
+        self._fill_in_explored_area()
 
     def get_tiles_within_sensor_radius(self):
         '''Returns (x, y, tile_value)'''
@@ -250,7 +254,7 @@ class Simulator(object):
             self.map[objective.x, objective.y] = 2
 
     def reset_game(self):
-        self.drones = [Drone(self) for _ in range(10)]  # limit to 1 drone for now
+        self.drones = [Drone(self) for _ in range(1)]  # limit to 1 drone for now
         self.objectives = [Objective()]
         #self.sensors = [drone.sensor for drone in self.drones]
         #self.map = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
@@ -274,8 +278,8 @@ class Simulator(object):
 
     def act(self, action):
         # we can't do multiple drones yet...
-        self.drones[0].move(self.ACTIONS[action])
-        self.update()
+        self.drones[0].do_action(self.ACTIONS[action])
+        #self.update()
 
 
 
@@ -491,7 +495,7 @@ def main():
         for drone in simulator.drones:
             # drone.rect.x += randint(-1, 1)
             # drone.rect.y += randint(-1, 1)
-            drone.move(choice(Simulator.ACTIONS))
+            drone.do_action(choice(Simulator.ACTIONS))
 
 
 
