@@ -13,8 +13,9 @@ from utils import circle_iterator
 from vec2d import Vec2d
 
 
-WIDTH = 500
-HEIGHT = 500
+WIDTH = 80
+HEIGHT = 80
+IS_DISPLAYING = False
 
 
 class Entity(pygame.sprite.Sprite):
@@ -58,7 +59,7 @@ class Entity(pygame.sprite.Sprite):
 
 class Drone(Entity):
 
-    def __init__(self, simulator, sensor_type='visible', sensor_radius=8):
+    def __init__(self, simulator, sensor_type='visible', sensor_radius=6):
         super(Drone, self).__init__()
         self.simulator = simulator
         self.sensor_type = sensor_type
@@ -76,8 +77,8 @@ class Drone(Entity):
         self.image.fill((0, 0, 0))
         # Drones start in bottom right
         self.rect.center = (
-            randint(WIDTH * .5, WIDTH), #randint(WIDTH * .9, WIDTH),
-            randint(HEIGHT * .5, HEIGHT), #randint(HEIGHT * .9, HEIGHT)
+            randint(WIDTH * .8, WIDTH), #randint(WIDTH * .9, WIDTH),
+            randint(HEIGHT * .8, HEIGHT), #randint(HEIGHT * .9, HEIGHT)
         )
 
         # self.sensor_distance is
@@ -157,10 +158,11 @@ class Drone(Entity):
                 except IndexError:
                     pass
                 # Put a pixel at the explored tile
-                self.simulator.explored_layer.fill(
-                    Simulator.EXPLORED_MAP_COLOR,
-                    ((x, y), (1, 1))
-                )
+                if IS_DISPLAYING:
+                    self.simulator.explored_layer.fill(
+                        Simulator.EXPLORED_MAP_COLOR,
+                        ((x, y), (1, 1))
+                    )
 
     def do_action(self, action):
         '''Move to the new tile but record old reward and get new one. Also mark explored tiles.
@@ -181,10 +183,11 @@ class Drone(Entity):
         except IndexError:
             pass
         # Put a pixel at the explored tile
-        self.simulator.explored_layer.fill(
-            Simulator.EXPLORED_MAP_COLOR,
-            ((self.x + self.sensor_radius, self.y + self.sensor_radius), (1, 1))
-        )
+        if IS_DISPLAYING:
+            self.simulator.explored_layer.fill(
+                Simulator.EXPLORED_MAP_COLOR,
+                ((self.x + self.sensor_radius, self.y + self.sensor_radius), (1, 1))
+            )
 
         self._move(action)  # action is a direction here
 
@@ -437,9 +440,9 @@ def main():
         # WIDTH,  # defaults.RESIZED_WIDTH,
         # HEIGHT,  # defaults.RESIZED_HEIGHT,
         # #,  # parameters.resize_method,
-        20,#200,  # parameters.epochs,
-        1000,#250000,  # parameters.steps_per_epoch,
-        1000,#12500,  # parameters.steps_per_test,
+        200,#200,  # parameters.epochs,
+        250000,#250000,  # parameters.steps_per_epoch,
+        12500,#12500,  # parameters.steps_per_test,
         1,  # parameters.frame_skip,
         # ,  # parameters.death_ends_episode,
         # ,  # parameters.max_start_nullops,
@@ -472,6 +475,17 @@ def main():
 
     simulator.reset_game()
 
+
+
+
+
+
+
+    import ipdb;ipdb.set_trace()
+
+
+
+    IS_DISPLAYING = True
 
 
 
