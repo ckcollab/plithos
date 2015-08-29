@@ -58,3 +58,6 @@ target/
 
 # PyCharm
 .idea/
+
+# Generated files from deep_q output
+src/plithos__*/

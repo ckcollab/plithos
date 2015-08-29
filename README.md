@@ -10,7 +10,7 @@ Install PyGame:
 
 `pip install hg+http://bitbucket.org/pygame/pygame`
 
-Install cuDNN:
+OPTIONALLY Install cuDNN:
 
 [Instructions here](http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html)
 
@@ -21,6 +21,7 @@ for places that have already been explored. So if you explore the same place, th
 the reward. If you explore it immediately after you get a -1??
 - Have a "goal area" where we think the objective may be, give + some points for going towards it???
 - Reward for moving away from other drones??
+- Penalize for moving out of the area?
 
 
 
@@ -52,3 +53,4 @@ The state will be the entire map `(WIDTH, HEIGHT)` where:
     - [ ] Multiple drones losing sensors
     - [ ] Multiple drones being destroyed in an area (hopefully they learn to avoid that area? fires?)
     - [ ] Saving multiple people
+    - [ ] Allow objective to wander... and to wander OFF the map!
