@@ -59,15 +59,15 @@ class Entity(pygame.sprite.Sprite):
 
 class Drone(Entity):
 
-    def __init__(self, simulator, sensor_type='visible', sensor_radius=6):
+    def __init__(self, simulator, sensor_type='visible', sensor_radius=8):
         super(Drone, self).__init__()
         self.simulator = simulator
         self.sensor_type = sensor_type
         self.sensor_radius = sensor_radius
 
         # Keeping track of distance from target search area
-        self.goal_last_seen_x = WIDTH * 0.05
-        self.goal_last_seen_y = HEIGHT * 0.05
+        self.goal_last_seen_x = WIDTH * 0.1
+        self.goal_last_seen_y = HEIGHT * 0.1
         self._old_distance_from_target_area = 0
         self.current_distance_from_target_area = 0
 
@@ -134,17 +134,23 @@ class Drone(Entity):
             - +1 if new position is closer to target'''
         reward = 0
 
+        # Did we find it?
+        if self.is_goal_in_range(Simulator._instance.objectives[0].x, Simulator._instance.objectives[0].y):
+            reward += 100
+
         # Are we closer?
         if self.current_distance_from_target_area < self._old_distance_from_target_area:
             reward += 1
+        # else:
+        #     reward -= 2
 
         # How many tiles in our sensor radius are unexplored?
         for _, _, tile in self.get_tiles_within_sensor_radius():
             if tile == 0:
-                reward += 0.5
+                reward += 0.25
 
         # If we go out of bounds really remove a lot of points
-        if self.x < 5 or self.x > WIDTH - 5 or self.y < 5 or self.y > HEIGHT - 5:
+        if self.x < 0 or self.x > WIDTH or self.y < 0 or self.y > HEIGHT:
             reward -= 5
 
         # print "self x/y:", self.x, self.y
@@ -153,6 +159,7 @@ class Drone(Entity):
         self.reward = reward
 
     def _fill_in_explored_area(self):
+        global IS_DISPLAYING
         for x, y, tile in self.get_tiles_within_sensor_radius():
             # If the tile has not been explored and isn't a drone/objective (1/2), mark it as explored
             if tile <= 0:
@@ -172,6 +179,8 @@ class Drone(Entity):
         '''Move to the new tile but record old reward and get new one. Also mark explored tiles.
 
         action is a direction from Simulator.ACTIONS'''
+        global IS_DISPLAYING
+
         # Save old distance
         if self.current_distance_from_target_area != 0:
             self._old_distance_from_target_area = self.current_distance_from_target_area
@@ -225,9 +234,10 @@ class Drone(Entity):
                 pass
 
     def is_goal_in_range(self, goal_x, goal_y):
+        # Offset our x/y with the sensor radius because the self x/y are the top left of the drone sprite
         return hypot(
-            self.x - goal_x,
-            self.y - goal_y,
+            self.x + self.sensor_radius - goal_x,
+            self.y + self.sensor_radius - goal_y,
         ) <= self.sensor_radius
 
 
@@ -246,6 +256,13 @@ class Objective(Entity):
 class Simulator(object):
     ACTIONS = ('up', 'left', 'down', 'right')
     EXPLORED_MAP_COLOR = (0, 100, 100)
+
+    # Singleton stuff
+    _instance = None
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = super(Simulator, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
     def __init__(self, screen):
         self.screen = screen
@@ -269,8 +286,8 @@ class Simulator(object):
         try:
             for drone in self.drones:
                 self.map[drone.x][drone.y] = 1
-            for objective in self.objectives:
-                self.map[objective.x][objective.y] = 2
+            #for objective in self.objectives:
+            #    self.map[objective.x][objective.y] = 2
         except IndexError:
             pass
 
@@ -389,17 +406,16 @@ class PlithosExperiment(object):
         done = False
         while True:
             reward = self._step(self.min_action_set[action])
-            # self.terminal_lol = (self.death_ends_episode
-            #                      and not testing
-            #                      and not self.simulator.is_any_drone_out_of_bounds())
-            # terminal = self.ale.game_over() or self.terminal_lol
 
             if self.simulator.is_game_over():
-                print "Found target"
+                print "Found target, reward =", reward
                 done = True
             elif self.simulator.is_any_drone_out_of_bounds():
                 #print "Drone out of bounds in", num_steps, "steps"
                 done = True
+            # elif num_steps >= 2000:
+            #     print "Drone took too long:", num_steps, "steps"
+            #     done = True
 
             num_steps += 1
 
@@ -421,6 +437,7 @@ class PlithosExperiment(object):
 
 def main():
     # Setup pygame stuff
+    global IS_DISPLAYING
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 24)
     clock = pygame.time.Clock()
@@ -443,7 +460,7 @@ def main():
         len(Simulator.ACTIONS),  # num_actions
         4,  # num_frames
         0.99,  # discount
-        0.0025,#0.00025,  # learning_rate
+        0.00025,  # learning_rate
         0.95,  # rho
         0.01,  # rms_epsilon
         0,  # momentum
@@ -481,9 +498,9 @@ def main():
         # WIDTH,  # defaults.RESIZED_WIDTH,
         # HEIGHT,  # defaults.RESIZED_HEIGHT,
         # #,  # parameters.resize_method,
-        25,#200,  # parameters.epochs,
-        50000,#250000,  # parameters.steps_per_epoch,
-        10000,#12500,  # parameters.steps_per_test,
+        2,#200,  # parameters.epochs,
+        12500,#250000,  # parameters.steps_per_epoch,
+        5000,#12500,  # parameters.steps_per_test,
         4,  # parameters.frame_skip,
         # ,  # parameters.death_ends_episode,
         # ,  # parameters.max_start_nullops,
@@ -517,12 +534,11 @@ def main():
 
 
 
-    import ipdb;ipdb.set_trace()
-
 
 
     IS_DISPLAYING = True
     WE_FOUND_HIM = False
+    CURRENT_SEARCH_STEPS = 0
 
 
 
@@ -533,6 +549,7 @@ def main():
                 exit()
             elif i.type == KEYDOWN and i.key == K_SPACE:
                 WE_FOUND_HIM = False
+                CURRENT_SEARCH_STEPS = 0
                 simulator.reset_game()
 
 
@@ -570,8 +587,14 @@ def main():
 
             action = experiment.agent.step(reward, experiment.simulator.map) # this sets action for the next time around
 
-            if simulator.is_any_drone_out_of_bounds():
+            # if simulator.is_any_drone_out_of_bounds():
+            #     simulator.reset_game()
+            if CURRENT_SEARCH_STEPS > 3000:
+                print "Resetting game, reached", CURRENT_SEARCH_STEPS, "steps"
                 simulator.reset_game()
+                CURRENT_SEARCH_STEPS = 0
+            else:
+                CURRENT_SEARCH_STEPS += 1
 
             if simulator.does_any_drone_see_target():
                 WE_FOUND_HIM = True
