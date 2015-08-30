@@ -135,23 +135,28 @@ class Drone(Entity):
         reward = 0
 
         # Did we find it?
-        if self.is_goal_in_range(Simulator._instance.objectives[0].x, Simulator._instance.objectives[0].y):
-            reward += 100
+        # if self.is_goal_in_range(Simulator._instance.objectives[0].x, Simulator._instance.objectives[0].y):
+        #     reward += 100
 
         # Are we closer?
-        if self.current_distance_from_target_area < self._old_distance_from_target_area:
-            reward += 1
+        # if self.current_distance_from_target_area < self._old_distance_from_target_area:
+        #     reward += 1
         # else:
-        #     reward -= 2
+        #     reward -= 1
+        reward += self.current_distance_from_target_area / 10
 
-        # How many tiles in our sensor radius are unexplored?
+        # Handle tiles in our sensor radius
         for _, _, tile in self.get_tiles_within_sensor_radius():
-            if tile == 0:
-                reward += 0.25
+            if tile == 0:  # unexplored tile
+                reward += 1
+            elif tile == -1:  # explored tile
+                reward -= 0.25
+            elif tile == None:  # tile out of bounds
+                reward -= 0.05
 
         # If we go out of bounds really remove a lot of points
-        if self.x < 0 or self.x > WIDTH or self.y < 0 or self.y > HEIGHT:
-            reward -= 5
+        # if self.x < 0 or self.x > WIDTH or self.y < 0 or self.y > HEIGHT:
+        #     reward -= 1
 
         # print "self x/y:", self.x, self.y
         # print "center x/y:", self.rect.center[0], self.rect.center[1]
@@ -166,14 +171,15 @@ class Drone(Entity):
                 # Mark our old tile as explored (-1 is explored)
                 try:
                     self.simulator.map[x][y] = -1
+
+                    # Put a pixel at the explored tile
+                    if IS_DISPLAYING:
+                        self.simulator.explored_layer.fill(
+                            Simulator.EXPLORED_MAP_COLOR,
+                            ((x, y), (1, 1))
+                        )
                 except IndexError:
                     pass
-                # Put a pixel at the explored tile
-                if IS_DISPLAYING:
-                    self.simulator.explored_layer.fill(
-                        Simulator.EXPLORED_MAP_COLOR,
-                        ((x, y), (1, 1))
-                    )
 
     def do_action(self, action):
         '''Move to the new tile but record old reward and get new one. Also mark explored tiles.
@@ -215,7 +221,7 @@ class Drone(Entity):
             self.goal_last_seen_y - self.y
         )
 
-        # Mark explored tiles; but, before marking them check what our reward was
+        # Mark explored tiles but, _before_ marking them check what our reward was
         self._get_current_reward()
         self._fill_in_explored_area()
 
@@ -231,7 +237,9 @@ class Drone(Entity):
                       circle_y + self.sensor_radius, \
                       self.simulator.map[circle_x + self.sensor_radius][circle_y + self.sensor_radius]
             except IndexError:
-                pass
+                yield circle_x + self.sensor_radius, \
+                      circle_y + self.sensor_radius, \
+                      None
 
     def is_goal_in_range(self, goal_x, goal_y):
         # Offset our x/y with the sensor radius because the self x/y are the top left of the drone sprite
@@ -256,6 +264,11 @@ class Objective(Entity):
 class Simulator(object):
     ACTIONS = ('up', 'left', 'down', 'right')
     EXPLORED_MAP_COLOR = (0, 100, 100)
+    TILE_OUT_OF_BOUNDS = None
+    TILE_EXPLORED = -1
+    TILE_UNEXPLORED = 0
+    TILE_DRONE = 1
+    TILE_OBJECTIVE = 2
 
     # Singleton stuff
     _instance = None
@@ -277,7 +290,7 @@ class Simulator(object):
         Current map legend:
             - 0 is unexplored, nothing there
             - 1 is a drone
-            - 2 is the objective
+            #- 2 is the objective
             - < 0 is explored, but updated each tick. So -1 was just explored, -0.99 was explored 1 tick ago..
                   something like that
         '''
@@ -321,8 +334,8 @@ class Simulator(object):
         #self.update()
         return self.drones[0].reward
 
-    def is_game_over(self):
-        return self.does_any_drone_see_target()
+    # def is_game_over(self):
+    #     return self.does_any_drone_see_target()
 
     def does_any_drone_see_target(self):
         for drone in self.drones:
@@ -345,6 +358,7 @@ class PlithosExperiment(object):
         self.frame_skip = frame_skip
         self.min_action_set = simulator.ACTIONS # self.min_action_set = ale.getMinimalActionSet()
         # self.width, self.height = ale.getScreenDims()
+        self.maximum_number_of_steps_before_giving_up = 1000
 
         self.buffer_length = 2
         self.buffer_count = 0
@@ -387,6 +401,8 @@ class PlithosExperiment(object):
             num_steps = self.run_episode(steps_left, testing)
             steps_left -= num_steps
 
+    #def _adjust_reward_based_on_step_count(self, steps_since):
+
     def run_episode(self, max_steps, testing):
         """Run a single training episode.
         The boolean terminal value returned indicates whether the
@@ -395,7 +411,6 @@ class PlithosExperiment(object):
         Currently this value will be ignored.
         Return: (terminal, num_steps)
         """
-
         #self._init_episode()
         self.simulator.reset_game()
 
@@ -407,19 +422,31 @@ class PlithosExperiment(object):
         while True:
             reward = self._step(self.min_action_set[action])
 
-            if self.simulator.is_game_over():
-                print "Found target, reward =", reward
+            if self.simulator.does_any_drone_see_target():
+                # Base reward for finding target
+                reward += 100
+                # Adjust reward based on step count
+                reward += float(self.maximum_number_of_steps_before_giving_up) / float(num_steps)
+                print "@@ Found target in", num_steps, "steps; reward =", reward
                 done = True
-            elif self.simulator.is_any_drone_out_of_bounds():
-                #print "Drone out of bounds in", num_steps, "steps"
-                done = True
-            # elif num_steps >= 2000:
-            #     print "Drone took too long:", num_steps, "steps"
+
+            # elif self.simulator.is_any_drone_out_of_bounds():
+            #     #print "Drone out of bounds in", num_steps, "steps"
             #     done = True
+            elif num_steps >= self.maximum_number_of_steps_before_giving_up:
+                print "Aborting! Drone took >=", num_steps, "steps"
+                done = True
 
             num_steps += 1
 
             if done or num_steps >= max_steps:
+                unique, counts = np.unique(self.simulator.map, return_counts=True)
+                # First element in counts array is -1 which is our explored tile count
+                explored_tiles = counts[0]
+                other_tiles = counts[1] if len(counts) > 1 else 0
+                total_tiles = explored_tiles + other_tiles
+                percentage_explored = (float(explored_tiles) / float(total_tiles)) * 100
+                print "\tPercentage explored this episode:", percentage_explored, "%"
                 self.agent.end_episode(reward, done)
                 break
 
@@ -443,15 +470,6 @@ def main():
     clock = pygame.time.Clock()
     simulator = Simulator(screen)
 
-
-
-
-
-
-
-
-
-
     # Setup machine learning stuff
     # Taken from run_nature.py Defaults
     network = DeepQLearner(
@@ -468,7 +486,7 @@ def main():
         10000,  # freeze_interval
         32,  # batch_size
         'linear',  # network_type
-        'deepmind_rmsprop',  # update_rule
+        'sgd',#'deepmind_rmsprop',  # update_rule
         'sum',  # batch_accumulator
         np.random.RandomState(),  # rng
     )
@@ -485,12 +503,6 @@ def main():
         np.random.RandomState(),  # rng
     )
 
-
-    # Need to implement:
-    # $$ WE CAN JUST PASS IT SIMULATOR!? $$
-    # ale.game_over() returns true for drone in drones: if drone.distance_from(objective) < drone.sensor_distance\
-    # ale.reset_game()
-
     experiment = PlithosExperiment(
         # ale
         simulator,
@@ -498,9 +510,9 @@ def main():
         # WIDTH,  # defaults.RESIZED_WIDTH,
         # HEIGHT,  # defaults.RESIZED_HEIGHT,
         # #,  # parameters.resize_method,
-        2,#200,  # parameters.epochs,
-        12500,#250000,  # parameters.steps_per_epoch,
-        5000,#12500,  # parameters.steps_per_test,
+        20,#200,  # parameters.epochs,
+        60000,#250000,  # parameters.steps_per_epoch,
+        12500,#12500,  # parameters.steps_per_test,
         4,  # parameters.frame_skip,
         # ,  # parameters.death_ends_episode,
         # ,  # parameters.max_start_nullops,
@@ -552,34 +564,6 @@ def main():
                 CURRENT_SEARCH_STEPS = 0
                 simulator.reset_game()
 
-
-
-        #
-        # for drone in simulator.drones:
-        #     # [up, down, left, right]
-        #     # unexplored [0, 0, 0, 0]
-        #     # explored [1, 1, 1, 1]
-        #     # input is: [
-        #     #     is explored [up, down, left, right],
-        #     #     sensor_found_objective [0, 1]
-        #     #     angle_to_goal_area [0-360]
-        #     #
-        #     # output is 'up', 'down', 'left', 'right'
-        #     classifier.partial_fit(state, decision, classes=('up', 'down', 'left', 'right'))
-
-
-
-        # for drone in simulator.drones:
-        #     pygame.draw.circle(screen, pygame.color.Color('blue'), (drone.rect.x, drone.rect.y), 50, 2)
-
-
-        # Randomly moving
-        # for drone in simulator.drones:
-        #     # drone.rect.x += randint(-1, 1)
-        #     # drone.rect.y += randint(-1, 1)
-        #     drone.do_action(choice(Simulator.ACTIONS))
-
-        #action = self.agent.step(reward, simulator.map)
         if not WE_FOUND_HIM:
             reward = experiment._step(experiment.min_action_set[action])
 
@@ -601,7 +585,6 @@ def main():
 
         else:
             print "WE DID IT! Hit space to release the drones again"
-
 
         simulator.sprites.clear(screen, simulator.background)
         simulator.sprites.update()
