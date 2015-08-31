@@ -143,20 +143,20 @@ class Drone(Entity):
         #     reward += 1
         # else:
         #     reward -= 1
-        reward += self.current_distance_from_target_area / 10
+        #reward += float(self.current_distance_from_target_area) / 10.0
 
         # Handle tiles in our sensor radius
         for _, _, tile in self.get_tiles_within_sensor_radius():
-            if tile == 0:  # unexplored tile
-                reward += 1
-            elif tile == -1:  # explored tile
-                reward -= 0.25
-            elif tile == None:  # tile out of bounds
-                reward -= 0.05
+            if tile == Simulator.TILE_UNEXPLORED:  # unexplored tile
+                reward += 0.1
+            # elif tile == -1:  # explored tile
+            #     reward -= 0.3
+            # elif tile == None:  # tile out of bounds
+            #     reward -= 0.1
 
         # If we go out of bounds really remove a lot of points
-        # if self.x < 0 or self.x > WIDTH or self.y < 0 or self.y > HEIGHT:
-        #     reward -= 1
+        if self.x < 0 or self.x > WIDTH or self.y < 0 or self.y > HEIGHT:
+            reward -= 5
 
         # print "self x/y:", self.x, self.y
         # print "center x/y:", self.rect.center[0], self.rect.center[1]
@@ -241,7 +241,7 @@ class Drone(Entity):
                       circle_y + self.sensor_radius, \
                       None
 
-    def is_goal_in_range(self, goal_x, goal_y):
+    def is_goal_in_sensor_range(self, goal_x, goal_y):
         # Offset our x/y with the sensor radius because the self x/y are the top left of the drone sprite
         return hypot(
             self.x + self.sensor_radius - goal_x,
@@ -270,18 +270,11 @@ class Simulator(object):
     TILE_DRONE = 1
     TILE_OBJECTIVE = 2
 
-    # Singleton stuff
-    _instance = None
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super(Simulator, cls).__new__(cls, *args, **kwargs)
-        return cls._instance
-
     def __init__(self, screen):
         self.screen = screen
 
     def get_all_entities(self):
-        return self.drones + self.objectives # + self.sensors
+        return self.drones + self.objectives
 
     def reset_map(self):
         '''
@@ -298,9 +291,9 @@ class Simulator(object):
 
         try:
             for drone in self.drones:
-                self.map[drone.x][drone.y] = 1
+                self.map[drone.x][drone.y] = Simulator.TILE_DRONE
             #for objective in self.objectives:
-            #    self.map[objective.x][objective.y] = 2
+            #    self.map[objective.x][objective.y] = Simulator.TILE_OBJECTIVE
         except IndexError:
             pass
 
@@ -339,12 +332,40 @@ class Simulator(object):
 
     def does_any_drone_see_target(self):
         for drone in self.drones:
-            if drone.is_goal_in_range(self.objectives[0].x, self.objectives[0].y):
+            if drone.is_goal_in_sensor_range(self.objectives[0].x, self.objectives[0].y):
+                # When we see objective, add it to map!
+                self.map[self.objectives[0].x][self.objectives[0].y] = Simulator.TILE_OBJECTIVE
                 return True
         return False
 
     def is_any_drone_out_of_bounds(self):
         return any(drone.is_out_of_bounds() for drone in self.drones)
+
+
+
+
+
+
+
+
+
+    def turn_on_drawing(self):
+        # should loop through all entities and turn on drawing as well
+        self.is_drawing = True
+        assert False
+
+    def turn_off_drawing(self):
+        # should loop through all entities and turn off drawing as well
+        self.is_drawing = False
+        assert False
+
+
+
+
+
+
+
+
 
 
 class PlithosExperiment(object):
@@ -396,12 +417,9 @@ class PlithosExperiment(object):
         steps_left = num_steps
         while steps_left > 0:
             prefix = "testing" if testing else "training"
-            logging.info(prefix + " epoch: " + str(epoch) + " steps_left: " +
-                         str(steps_left))
+            logging.info(prefix + " epoch: " + str(epoch) + " steps_left: " + str(steps_left))
             num_steps = self.run_episode(steps_left, testing)
             steps_left -= num_steps
-
-    #def _adjust_reward_based_on_step_count(self, steps_since):
 
     def run_episode(self, max_steps, testing):
         """Run a single training episode.
@@ -486,7 +504,7 @@ def main():
         10000,  # freeze_interval
         32,  # batch_size
         'linear',  # network_type
-        'sgd',#'deepmind_rmsprop',  # update_rule
+        "deepmind_rmsprop", #'sgd',#'deepmind_rmsprop',  # update_rule
         'sum',  # batch_accumulator
         np.random.RandomState(),  # rng
     )
