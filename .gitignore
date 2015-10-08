@@ -61,3 +61,7 @@ target/
 
 # Generated files from deep_q output
 src/plithos__*/
+
+
+
+.DS_Store
