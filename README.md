@@ -1,5 +1,11 @@
 # plithos
 
+<p align="center" class="image-wrapper">
+ <img src="https://raw.githubusercontent.com/dev-coop/plithos/master/docs/plithos.gif" alt="Plithos in action" width="320" height="320">
+ <br>
+ <i>plithos learning to find objective</i>
+</p>
+
 ## Installation
 
 ### Mac
