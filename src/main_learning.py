@@ -13,6 +13,10 @@ from utils import circle_iterator
 from vec2d import Vec2d
 
 
+# Print without truncating
+#np.set_printoptions(threshold='nan', linewidth=500)
+
+
 class Entity(pygame.sprite.Sprite):
 
     def __init__(self):
@@ -55,7 +59,7 @@ class Entity(pygame.sprite.Sprite):
 
 class Drone(Entity):
 
-    def __init__(self, simulator, map_width, map_height, sensor_type='visible', sensor_radius=8):
+    def __init__(self, simulator, map_width, map_height, sensor_type='visible', sensor_radius=4):
         super(Drone, self).__init__()
         self.simulator = simulator
         self.sensor_type = sensor_type
@@ -184,9 +188,9 @@ class Drone(Entity):
                             ((x, y), (1, 1))
                         )
 
-                if x == self.x and y == self.y:
-                    # Place ourselves on the map
-                    self.simulator.map[x][y] = Simulator.TILE_DRONE
+                # if x == self.x and y == self.y:
+                #     # Place ourselves on the map
+                #     self.simulator.map[x][y] = Simulator.TILE_DRONE
             except IndexError:
                 pass
 
@@ -203,11 +207,11 @@ class Drone(Entity):
                 self.goal_last_seen_y - self.y
             )
 
-        # Mark old tile as explored, it was set tp 1 for drone
-        try:
-            self.simulator.map[self.x][self.y] = -1
-        except IndexError:
-            pass
+        # # Mark old tile as explored, it was set tp 1 for drone
+        # try:
+        #     self.simulator.map[self.x][self.y] = -1
+        # except IndexError:
+        #     pass
         # Put a pixel at the explored tile
         if self.is_displaying:
             self.simulator.explored_layer.fill(
@@ -218,10 +222,10 @@ class Drone(Entity):
         self._move(action)  # action is a direction here
 
         # Mark new tile as drone (1 means drone)
-        try:
-            self.simulator.map[self.x][self.y] = 1
-        except IndexError:
-            pass
+        # try:
+        #     self.simulator.map[self.x][self.y] = 1
+        # except IndexError:
+        #     pass
 
         self.current_distance_from_target_area = hypot(
             self.goal_last_seen_x - self.x,
@@ -303,13 +307,13 @@ class Simulator(object):
         '''
         self.map = np.zeros((self.map_width, self.map_height), dtype=np.int)
 
-        try:
-            for drone in self.drones:
-                self.map[drone.x][drone.y] = Simulator.TILE_DRONE
-            #for objective in self.objectives:
-            #    self.map[objective.x][objective.y] = Simulator.TILE_OBJECTIVE
-        except IndexError:
-            pass
+        # try:
+        #     for drone in self.drones:
+        #         self.map[drone.x][drone.y] = Simulator.TILE_DRONE
+        #     #for objective in self.objectives:
+        #     #    self.map[objective.x][objective.y] = Simulator.TILE_OBJECTIVE
+        # except IndexError:
+        #     pass
 
     def reset_game(self):
         self.drones = [Drone(self, self.map_width, self.map_height) for _ in range(1)]  # limit to 1 drone for now
@@ -473,8 +477,7 @@ class PlithosExperiment(object):
 
             if self.simulator.does_any_drone_see_target():
                 # Base reward for finding target
-                # reward += 1000
-                # total_reward_given += reward
+                total_reward_given += 1000
                 # Adjust reward based on step count
                 #reward += float(self.maximum_number_of_steps_before_giving_up) / float(num_steps)
                 print "@@ Found target in", num_steps, "steps; total reward =", total_reward_given
@@ -492,7 +495,30 @@ class PlithosExperiment(object):
                 self.agent.end_episode(reward, done)
                 break
 
-            action = self.agent.step(total_reward_given, self.simulator.map)
+            # Add drones to map
+            map_copy = self.simulator.map.copy()
+            for drone in self.simulator.drones:
+                center_x, center_y = drone.rect.center
+                for circle_x, circle_y in circle_iterator(center_x, center_y, drone.sensor_radius):
+                    try:
+                        map_copy[circle_x + drone.sensor_radius][circle_y + drone.sensor_radius] = Simulator.TILE_SENSOR_RADIUS
+                    except IndexError:
+                        pass
+                try:
+                    map_copy[drone.x][drone.y] = Simulator.TILE_DRONE
+                except IndexError:
+                    pass
+
+            # Print out map in ASCII
+            # for row in map_copy:
+            #     new_row = []
+            #     for i in row:
+            #         if i == -1:
+            #             i = '*'
+            #         new_row.append(str(i))
+            #     print ''.join(new_row)
+
+            action = self.agent.step(total_reward_given, map_copy)
         return num_steps
 
     def _step(self, action):
@@ -507,8 +533,8 @@ class PlithosExperiment(object):
 def main():
     # Setup pygame stuff
     pygame.init()
-    width = 80
-    height = 80
+    width = 100
+    height = 100
     screen = pygame.display.set_mode((width, height), 0, 24)
     clock = pygame.time.Clock()
     simulator = Simulator(screen)
