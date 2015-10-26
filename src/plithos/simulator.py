@@ -110,7 +110,6 @@ class Drone(Entity):
         return self.x < 0 or self.x > self.width or self.y < 0 or self.y >= self.height
 
     def get_tiles_within_sensor_radius(self):
-        '''Returns (x, y, tile_value)'''
         for circle_x, circle_y in circle_iterator(self.x, self.y, self.sensor_radius):
             yield circle_x, circle_y
 
@@ -173,13 +172,14 @@ class Simulator(object):
 
     def print_map(self):
         '''Print out map in ASCII'''
-        for row in self.map:
+        for y in range(self.height):
             new_row = []
-            for i in row:
-                if i == Simulator.TILE_EXPLORED:
-                    i = '*'
-                new_row.append(str(i))
-            print ''.join(new_row)
+            for x in range(self.width):
+                tile = self.map[x][y]
+                if tile == Simulator.TILE_EXPLORED:
+                    tile = '*'
+                new_row.append(str(tile))
+            print ' '.join(new_row)
 
     def _check_pygame_events(self):
         for i in pygame.event.get():
@@ -195,7 +195,7 @@ class Simulator(object):
             #     if move:
             #         self.drones[0].do_action(move)
 
-            # TODO: when we have a decently trained
+            # TODO: when we have a decently trained thing to demo
             # elif i.type == KEYDOWN and i.key == K_SPACE:
             #     WE_FOUND_HIM = False
             #     CURRENT_SEARCH_STEPS = 0

@@ -23,7 +23,7 @@ class HandControlled(Simulator):
                 if move:
                     self.drones[0].do_action(move)
                     self.print_map()
-                    print self.drones[0].rect.center
+                    print "(%s, %s)" % (self.drones[0].x, self.drones[0].y)
 
     def start(self):
         self.init_game()
