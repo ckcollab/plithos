@@ -1,6 +1,8 @@
 import random
 import pygame
 from pygame import *
+from sys import maxsize
+
 from ..simulator import Simulator, Drone
 
 
@@ -20,21 +22,26 @@ class SearchDrone(Drone):
 
     def do_best_move(self):
         # Start with random move
-        best_move = random.choice(self.MOVES)[0]
-        best_score = 0
-        for move, offset_x, offset_y in self.MOVES:
-            score = self.get_move_score(offset_x, offset_y)
-            if score > best_score:
-                best_move = move
-                best_score = score
-        #print "Doing move", best_move, "with score =", best_score
+        best_move = None
+        best_score = 20#-maxsize
+        search_distance = 0
+        max_search_distance = 50
+        while best_move == None and search_distance < max_search_distance:
+            search_distance += 1
+            # Look for the best move while searching further and further until we find a decent direction
+            for move, offset_x, offset_y in self.MOVES:
+                score = self.get_move_score(offset_x * search_distance, offset_y * search_distance)
+                if score > best_score:
+                    best_move = move
+                    best_score = score
+        print "Doing move", best_move, "with score =", best_score
         self.do_move(best_move)
 
     def get_move_score(self, offset_x, offset_y):
         score = 0
         for x, y in self.get_tiles_within_sensor_radius(center_x=self.x + offset_x, center_y=self.y + offset_y):
             try:
-                if 0 < x >= self.simulator.width or 0 < y >= self.simulator.height:
+                if not(0 < x <= self.simulator.width and 0 < y <= self.simulator.height):
                     # Huge negative for going out of bounds
                     score -= 100
                 elif self.simulator.map[x][y] == Simulator.TILE_UNEXPLORED:
