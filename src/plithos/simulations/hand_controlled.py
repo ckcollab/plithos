@@ -21,7 +21,7 @@ class HandControlled(Simulator):
                 if i.key == K_UP: move = 'up'
 
                 if move:
-                    self.drones[0].do_action(move)
+                    self.drones[0].do_move(move)
                     self.print_map()
                     print "(%s, %s)" % (self.drones[0].x, self.drones[0].y)
 
