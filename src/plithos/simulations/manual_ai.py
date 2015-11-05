@@ -20,6 +20,40 @@ class SearchDrone(Drone):
         super(SearchDrone, self).__init__(*args, **kwargs)
         self.score = 0
 
+
+
+
+
+
+
+
+
+
+    # Let's change things.
+    #
+    # First let's split the map up based on sensor radius. Then let's score each tile. Tile size
+    # is width=sensor_radius height=sensor_radius for smallest sensor.
+    #
+    # if not has_next_move():
+    #   find_best_area()
+    #   generate_moves()
+    # else:
+    #   do_next_move()
+    #
+    #
+    # find_best_area function will score the areas based on distance from you and how recently they were explored.
+
+
+
+
+
+
+
+
+
+
+
+
     def do_best_move(self):
         # Start with random move
         best_move = None
