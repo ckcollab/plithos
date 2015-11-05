@@ -1,4 +1,4 @@
+theano==0.7.0  # this goes first or else shit doesn't work?!
 hg+http://bitbucket.org/pygame/pygame
-theano==0.7.0
 deepy==0.1.7
 

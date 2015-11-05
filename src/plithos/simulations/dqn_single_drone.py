@@ -23,7 +23,7 @@ class DQNSingleDroneExperiment(Simulator):
             action = self.agent.get_action(state)
             reward = 0
 
-            self.drones[0].do_action(self.ACTIONS[action])
+            self.drones[0].do_move(self.ACTIONS[action])
 
             # Get state after action
             next_state = self.map.copy()

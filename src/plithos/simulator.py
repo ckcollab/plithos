@@ -102,23 +102,26 @@ class Drone(Entity):
         # mark all drones in case sensor radius overrode their tile
         self.simulator._mark_drone_locations()
 
-    def do_action(self, action):
-        self._move(action)  # action is a direction here
+    def do_move(self, direction):
+        self._move(direction)  # action is a direction here
         self._fill_in_explored_area()
 
     def is_out_of_bounds(self):
         return self.x < 0 or self.x > self.width or self.y < 0 or self.y >= self.height
 
-    def get_tiles_within_sensor_radius(self):
-        for circle_x, circle_y in circle_iterator(self.x, self.y, self.sensor_radius):
+    def get_tiles_within_sensor_radius(self, center_x=None, center_y=None):
+        center_x = center_x if center_x else self.x
+        center_y = center_y if center_y else self.y
+        for circle_x, circle_y in circle_iterator(center_x, center_y, self.sensor_radius):
             yield circle_x, circle_y
 
-    def is_goal_in_sensor_range(self, goal_x, goal_y):
+    def is_an_objective_in_sensor_range(self):
         # Offset our x/y with the sensor radius because the self x/y are the top left of the drone sprite
-        return hypot(
-            self.x - goal_x,
-            self.y - goal_y,
-        ) <= self.sensor_radius
+        for objective in self.simulator.objectives:
+            return hypot(
+                self.x - objective.x,
+                self.y - objective.y,
+            ) <= self.sensor_radius
 
 
 class Objective(Entity):
@@ -143,15 +146,20 @@ class Simulator(object):
     TILE_SENSOR_RADIUS = 4  # may not be used. could put our sensor radius around the drone in the state map...
                             # but might not be that useful....
 
-    def __init__(self, width=40, height=40, sensor_radius=4):
+    def __init__(self, width=40, height=40, sensor_radius=4, drone_count=1):
         self.screen = pygame.display.set_mode((width, height), 0, 24)
         self.width = width
         self.height = height
         self.default_sensor_radius = sensor_radius
+        self.drone_count = drone_count
+
+    def create_drone(self):
+        return Drone(self, sensor_radius=self.default_sensor_radius)
 
     def init_game(self):
         self.map = np.zeros((self.width, self.height), dtype=np.int)
-        self.drones = [Drone(self, sensor_radius=self.default_sensor_radius) for _ in range(1)]  # limit to 1 drone for now
+        self.drones = [self.create_drone() for _ in range(self.drone_count)]
+
         self.objectives = [Objective(self)]
 
         # Setup background & explored layer

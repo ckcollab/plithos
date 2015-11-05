@@ -10,15 +10,24 @@
 
 ### Mac
 
-Install PyGame:
+Install pygame requirements
 
-`brew install sdl sdl_image sdl_mixer sdl_ttf portmidi hg`
+    brew install sdl sdl_image sdl_mixer sdl_ttf portmidi hg
 
-`pip install hg+http://bitbucket.org/pygame/pygame`
+Clone this repo and move to the dir
 
-OPTIONALLY Install cuDNN:
+    git clone git@github.com:dev-coop/plithos.git && cd plithos
 
-[Instructions here](http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html)
+Install python requirements
+
+    pip install -r requirements.txt
+
+Test it
+
+    python src/run.py
+
+OPTIONALLY [install cuDNN](http://deeplearning.net/software/theano/library/sandbox/cuda/dnn.html) if you have a discrete GPU
+
 
 # Machine learning scoring
 

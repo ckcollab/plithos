@@ -12,7 +12,7 @@ class RandomMover(Simulator):
             self._check_pygame_events()
 
             for drone in self.drones:
-                drone.do_action(random.choice(['up', 'down', 'left', 'right']))
+                drone.do_move(random.choice(self.ACTIONS))
 
             self.print_map()
 
