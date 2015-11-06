@@ -31,4 +31,6 @@ class HandControlled(Simulator):
         while True:
             self._check_pygame_events()
 
+            self._decay_map()
+
             self._draw()

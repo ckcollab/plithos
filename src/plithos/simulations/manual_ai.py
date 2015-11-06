@@ -3,7 +3,7 @@ import pygame
 from pygame import *
 from sys import maxsize
 
-from ..simulator import Simulator, Drone
+from ..simulator import Simulator, Drone, Objective
 
 
 class SearchDrone(Drone):
@@ -35,8 +35,8 @@ class SearchDrone(Drone):
     # is width=sensor_radius height=sensor_radius for smallest sensor.
     #
     # if not has_next_move():
-    #   find_best_area()
-    #   generate_moves()
+    #   area = find_best_area()
+    #   generate_moves_to_area(area)
     # else:
     #   do_next_move()
     #
@@ -53,14 +53,15 @@ class SearchDrone(Drone):
 
 
 
-
+    # Best move version that searches over a large distance
+    #
     def do_best_move(self):
         # Start with random move
         best_move = None
-        best_score = 20#-maxsize
+        best_score = 30#-maxsize
         search_distance = 0
         max_search_distance = 50
-        while best_move == None and search_distance < max_search_distance:
+        while best_move is None and search_distance < max_search_distance:
             search_distance += 1
             # Look for the best move while searching further and further until we find a decent direction
             for move, offset_x, offset_y in self.MOVES:
@@ -68,8 +69,20 @@ class SearchDrone(Drone):
                 if score > best_score:
                     best_move = move
                     best_score = score
-        print "Doing move", best_move, "with score =", best_score
+        #print "Doing move", best_move, "with score =", best_score
         self.do_move(best_move)
+
+    # def do_best_move(self):
+    #     # Start with random move
+    #     best_move = None
+    #     best_score = 0
+    #     for move, offset_x, offset_y in self.MOVES:
+    #         score = self.get_move_score(offset_x, offset_y)
+    #         if score > best_score:
+    #             best_move = move
+    #             best_score = score
+    #     #print "Doing move", best_move, "with score =", best_score
+    #     self.do_move(best_move)
 
     def get_move_score(self, offset_x, offset_y):
         score = 0
@@ -80,14 +93,25 @@ class SearchDrone(Drone):
                     score -= 100
                 elif self.simulator.map[x][y] == Simulator.TILE_UNEXPLORED:
                     score += 1
-                elif self.simulator.map[x][y] == Simulator.TILE_EXPLORED:
-                    score += .25
+                elif self.simulator.map[x][y] < 0:
+                    # Explored tiles are -1 < 0 so if we take -(-0.5) + our score we get a nice
+                    # decay and are guided back to areas we haven't explored in a while
+                    #
+                    # Also, weight it to be half as effective
+                    score += (-self.simulator.map[x][y]) * .5
             except IndexError:
                 pass
         return score
 
 
 class ManualAIExperiment(Simulator):
+
+    def create_objective(self):
+        return Objective(
+            self,
+            start_x=random.randint(self.width * .05, self.width * .7),
+            start_y=random.randint(self.height * .05, self.height * .7)
+        )
 
     def create_drone(self):
         # Custom drone creation
@@ -107,5 +131,7 @@ class ManualAIExperiment(Simulator):
                     if drone.is_an_objective_in_sensor_range():
                         print "Found ya buddy!!"
                         found = True
+
+                self._decay_map()
 
             self._draw()

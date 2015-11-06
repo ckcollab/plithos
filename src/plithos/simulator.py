@@ -127,13 +127,22 @@ class Drone(Entity):
 class Objective(Entity):
 
     def __init__(self, *args, **kwargs):
+        '''The random weights are the "weights" for where we will place the objective.
+
+        The default random weights place the objective somewhere in the top left
+            (WIDTH * .05, HEIGHT * .05) and (WIDTH * .2, HEIGHT * .2)'''
+        start_x = kwargs.pop('start_x', None)
+        start_y = kwargs.pop('start_y', None)
         super(Objective, self).__init__(*args, **kwargs)
         self.image.fill(pygame.color.Color('green'))
-        # Objectives start in top left
-        self.rect.center = (
-            randint(self.map_width * .05, self.map_width * .2),
-            randint(self.map_height * .05, self.map_height * .2)
-        )
+        if not start_x:
+            # Objectives start in top left by default
+            self.rect.center = (
+                randint(self.map_width * .05, self.map_width * .2),
+                randint(self.map_height * .05, self.map_height * .2)
+            )
+        else:
+            self.rect.center = (start_x, start_y)
 
 
 class Simulator(object):
@@ -153,14 +162,17 @@ class Simulator(object):
         self.default_sensor_radius = sensor_radius
         self.drone_count = drone_count
 
+    def create_objective(self):
+        return Objective(self)
+
     def create_drone(self):
         return Drone(self, sensor_radius=self.default_sensor_radius)
 
     def init_game(self):
-        self.map = np.zeros((self.width, self.height), dtype=np.int)
+        self.map = np.zeros((self.width, self.height), dtype=np.float16)
         self.drones = [self.create_drone() for _ in range(self.drone_count)]
 
-        self.objectives = [Objective(self)]
+        self.objectives = [self.create_objective()]
 
         # Setup background & explored layer
         self.background = pygame.Surface(self.screen.get_size())
@@ -184,8 +196,12 @@ class Simulator(object):
             new_row = []
             for x in range(self.width):
                 tile = self.map[x][y]
-                if tile == Simulator.TILE_EXPLORED:
+                if tile < 0:  # if tile has been explored
                     tile = '*'
+                elif tile == 0:
+                    tile = '.'  # nicer than big 0
+                else:
+                    tile = int(tile)  # float to int so it displays nicely
                 new_row.append(str(tile))
             print ' '.join(new_row)
 
@@ -217,6 +233,49 @@ class Simulator(object):
         self.sprites.draw(self.screen)
 
         pygame.display.flip()
+
+    def _decay_map(self):
+        # Explored areas will 'decay' back to unexplored eventually by using this function repeatedly
+        decay_rate = 0.005
+
+        it = np.nditer(self.map, op_flags=['readwrite'], flags=['multi_index'])
+
+        import time
+        t0 = time.time()
+
+        # for y in xrange(self.height):
+        #     for x in xrange(self.width):
+        #         tile = self.map[x][y]
+        #         if tile < 0:
+        #             tile += decay_rate
+        #
+        #             # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+        #             weighted_color = (0, 100 * -tile, 100 * -tile)
+        #
+        #             self.explored_layer.fill(
+        #                 weighted_color,
+        #                 ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
+        #             )
+
+        while not it.finished:
+            # tile = it[0]
+            if it[0] < 0:
+                it[0] += decay_rate
+
+                # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+                weighted_color = (0, 100 * -it[0], 100 * -it[0])
+
+                self.explored_layer.fill(
+                    weighted_color,
+                    ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
+                )
+            elif 0 < it[0] < 1:
+                it[0] = 0  # reset tile to 0 if it ended up being > 0 somehow
+            it.iternext()
+
+        t1 = time.time()
+        total = t1-t0
+        #print "Time to decay shit:", total
 
     def _mark_drone_locations(self):
         for drone in self.drones:
