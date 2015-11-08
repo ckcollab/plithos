@@ -59,7 +59,7 @@ class Drone(Entity):
         pygame.draw.rect(
             self.image,
             pygame.color.Color('white'),
-            (self.sensor_radius - 1, self.sensor_radius - 1, 1, 1),
+            (self.sensor_radius, self.sensor_radius, 1, 1),
             1
         )
 
@@ -90,10 +90,10 @@ class Drone(Entity):
             pass
 
         for x, y in self.get_tiles_within_sensor_radius():
-            self.simulator.explored_layer.fill(
-                Simulator.EXPLORED_MAP_COLOR,
-                ((x - 1, y - 1), (1, 1))
-            )
+            # self.simulator.explored_layer.fill(
+            #     Simulator.EXPLORED_MAP_COLOR,
+            #     ((x - 1, y - 1), (1, 1))
+            # )
             try:
                 self.simulator.map[x][y] = Simulator.TILE_EXPLORED
             except IndexError:
@@ -243,35 +243,34 @@ class Simulator(object):
         import time
         t0 = time.time()
 
-        # for y in xrange(self.height):
-        #     for x in xrange(self.width):
-        #         tile = self.map[x][y]
-        #         if tile < 0:
-        #             tile += decay_rate
+        for y in xrange(self.height):
+            for x in xrange(self.width):
+                if self.map[x][y] < 0:
+                    self.map[x][y] += decay_rate
+
+                    # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+                    weighted_color = (0, int(100 * -self.map[x][y]), int(100 * -self.map[x][y]))
+
+                    self.explored_layer.fill(
+                        weighted_color,
+                        ((x - 1, y - 1), (1, 1))
+                    )
+
+        # while not it.finished:
+        #     # tile = it[0]
+        #     if it[0] < 0:
+        #         it[0] += decay_rate
         #
-        #             # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
-        #             weighted_color = (0, 100 * -tile, 100 * -tile)
+        #         # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+        #         weighted_color = (0, 100 * -it[0], 100 * -it[0])
         #
-        #             self.explored_layer.fill(
-        #                 weighted_color,
-        #                 ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
-        #             )
-
-        while not it.finished:
-            # tile = it[0]
-            if it[0] < 0:
-                it[0] += decay_rate
-
-                # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
-                weighted_color = (0, 100 * -it[0], 100 * -it[0])
-
-                self.explored_layer.fill(
-                    weighted_color,
-                    ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
-                )
-            elif 0 < it[0] < 1:
-                it[0] = 0  # reset tile to 0 if it ended up being > 0 somehow
-            it.iternext()
+        #         self.explored_layer.fill(
+        #             weighted_color,
+        #             ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
+        #         )
+        #     elif 0 < it[0] < 1:
+        #         it[0] = 0  # reset tile to 0 if it ended up being > 0 somehow
+        #     it.iternext()
 
         t1 = time.time()
         total = t1-t0

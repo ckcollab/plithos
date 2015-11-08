@@ -1,7 +1,7 @@
 import argparse
 
 from plithos.simulations.random_mover import RandomMover
-from plithos.simulations.dqn_single_drone import DQNSingleDroneExperiment
+#from plithos.simulations.dqn_single_drone import DQNSingleDroneExperiment
 from plithos.simulations.hand_controlled import HandControlled
 from plithos.simulations.manual_ai import ManualAIExperiment
 
@@ -9,7 +9,7 @@ from plithos.simulations.manual_ai import ManualAIExperiment
 if __name__ == '__main__':
     simulations = {
         'random': RandomMover,
-        'deepq': DQNSingleDroneExperiment,
+        #'deepq': DQNSingleDroneExperiment,
         'hand': HandControlled,
         'ai': ManualAIExperiment,
     }

@@ -1,3 +1,6 @@
 theano==0.7.0  # this goes first or else shit doesn't work?!
 hg+http://bitbucket.org/pygame/pygame
 deepy==0.1.7
+
+# pypy
+# pygame_cffi
