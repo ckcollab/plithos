@@ -54,6 +54,10 @@ The state will be the entire map `(WIDTH, HEIGHT)` where:
 
 
 
+# Crazy ideas
+
+ - Add a "objective movement predictor" that marks the most likely location of the objective. This predictor can change it's prediction based on given values like: current, wind, temperature, etc.
+
 
 ### Todo:
 - [ ] Draw a map with drones; show x, y, z
