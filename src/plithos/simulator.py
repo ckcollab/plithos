@@ -237,7 +237,7 @@ class Simulator(object):
     def _gravity_map(self):
         # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
         # reward.
-        gravity_rate = 0.0001
+        gravity_rate = 0.01
         map_copy = np.array(self.map)
 
         # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
@@ -245,21 +245,30 @@ class Simulator(object):
             for x in xrange(self.width):
                 # Note we're testing the value of the map copy and modify the actual map so we don't
                 # fudge our results
-                if map_copy[x][y] >= 0:
-                    if map_copy[x][y] == 0:
-                        # Totally unexplored tile, give it a boost and all those around it a boost
-                        gravity_rate_modifier = 2
-                    else:
-                        gravity_rate_modifier = 1
-
-                    if map_copy[x][y] < 1:
-                        # Only increase a tile to around 1
-                        for ix in range(-1, 2):
-                            for iy in range(-1, 2):
-                                try:
-                                    self.map[x + ix][y + iy] += gravity_rate * gravity_rate_modifier
-                                except IndexError:
-                                    pass
+                # if map_copy[x][y] >= 0:
+                #     if map_copy[x][y] == 0:
+                #         # Totally unexplored tile, give it a boost and all those around it a boost
+                #         gravity_rate_modifier = 2
+                #     else:
+                #         gravity_rate_modifier = 1
+                #
+                #     if map_copy[x][y] < 1:
+                #         # Only increase a tile to around 1
+                #         for ix in range(-1, 2):
+                #             for iy in range(-1, 2):
+                #                 try:
+                #                     self.map[x + ix][y + iy] += gravity_rate * gravity_rate_modifier
+                #                 except IndexError:
+                #                     pass
+                if map_copy[x][y] < 1:
+                    # Only increase a tile to around 1
+                    for ix in (-1, 1):
+                        for iy in (-1, 1):
+                            try:
+                                if self.map[x + ix][y + iy] >= 0:
+                                    self.map[x][y] += gravity_rate
+                            except IndexError:
+                                pass
 
         # Then edit the display to show the changes
         for y in xrange(self.height):
