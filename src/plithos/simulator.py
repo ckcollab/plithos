@@ -236,7 +236,7 @@ class Simulator(object):
 
     def _decay_map(self):
         # Explored areas will 'decay' back to unexplored eventually by using this function repeatedly
-        decay_rate = 0.005
+        decay_rate = 0.0005
 
         it = np.nditer(self.map, op_flags=['readwrite'], flags=['multi_index'])
 
