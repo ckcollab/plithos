@@ -1,6 +1,7 @@
 import argparse
 
 from plithos.simulations.random_mover import RandomMover
+from plithos.simulations.deap_genetic import DEAPSingleDroneExperiment
 #from plithos.simulations.dqn_single_drone import DQNSingleDroneExperiment
 from plithos.simulations.hand_controlled import HandControlled
 from plithos.simulations.manual_ai import ManualAIExperiment
@@ -12,6 +13,7 @@ if __name__ == '__main__':
         #'deepq': DQNSingleDroneExperiment,
         'hand': HandControlled,
         'ai': ManualAIExperiment,
+        'deap': DEAPSingleDroneExperiment,
     }
     simulations_string = ', '.join(simulations.keys())
 
