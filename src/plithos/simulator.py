@@ -234,14 +234,51 @@ class Simulator(object):
 
         pygame.display.flip()
 
+    def _gravity_map(self):
+        # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
+        # reward.
+        gravity_rate = 0.0001
+        map_copy = np.array(self.map)
+
+        # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
+        for y in xrange(self.height):
+            for x in xrange(self.width):
+                # Note we're testing the value of the map copy and modify the actual map so we don't
+                # fudge our results
+                if map_copy[x][y] >= 0:
+                    if map_copy[x][y] == 0:
+                        # Totally unexplored tile, give it a boost and all those around it a boost
+                        gravity_rate_modifier = 2
+                    else:
+                        gravity_rate_modifier = 1
+
+                    if map_copy[x][y] < 1:
+                        # Only increase a tile to around 1
+                        for ix in range(-1, 2):
+                            for iy in range(-1, 2):
+                                try:
+                                    self.map[x + ix][y + iy] += gravity_rate * gravity_rate_modifier
+                                except IndexError:
+                                    pass
+
+        # Then edit the display to show the changes
+        for y in xrange(self.height):
+            for x in xrange(self.width):
+                if self.map[x][y] > 0:
+                    if self.map[x][y] > 1:
+                        # Max the tile out at 1
+                        self.map[x][y] = 1
+                    # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+                    weighted_color = (0, int(100 * self.map[x][y]), 0)
+
+                    self.explored_layer.fill(
+                        weighted_color,
+                        ((x - 1, y - 1), (1, 1))
+                    )
+
     def _decay_map(self):
         # Explored areas will 'decay' back to unexplored eventually by using this function repeatedly
         decay_rate = 0.0005
-
-        it = np.nditer(self.map, op_flags=['readwrite'], flags=['multi_index'])
-
-        import time
-        t0 = time.time()
 
         for y in xrange(self.height):
             for x in xrange(self.width):
@@ -255,26 +292,6 @@ class Simulator(object):
                         weighted_color,
                         ((x - 1, y - 1), (1, 1))
                     )
-
-        # while not it.finished:
-        #     # tile = it[0]
-        #     if it[0] < 0:
-        #         it[0] += decay_rate
-        #
-        #         # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
-        #         weighted_color = (0, 100 * -it[0], 100 * -it[0])
-        #
-        #         self.explored_layer.fill(
-        #             weighted_color,
-        #             ((it.multi_index[0] - 1, it.multi_index[1] - 1), (1, 1))
-        #         )
-        #     elif 0 < it[0] < 1:
-        #         it[0] = 0  # reset tile to 0 if it ended up being > 0 somehow
-        #     it.iternext()
-
-        t1 = time.time()
-        total = t1-t0
-        #print "Time to decay shit:", total
 
     def _mark_drone_locations(self):
         for drone in self.drones:

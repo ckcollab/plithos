@@ -1,4 +1,4 @@
-from deap import algorithms, base, creator, toolsun
+from deap import algorithms, base, creator, tools
 
 from ..simulator import Simulator
 

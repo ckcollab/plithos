@@ -49,29 +49,41 @@ class SearchDrone(Drone):
 
 
 
+    def do_best_move(self):
+        # Start with random move
+        best_move = None
+        best_score = 0
+        for move, offset_x, offset_y in self.MOVES:
+            score = self.get_move_score(offset_x, offset_y)
+            if score > best_score:
+                best_move = move
+                best_score = score
 
-
+        #print "Doing move", best_move, "with score =", best_score
+        self.do_move(best_move)
 
 
     # Best move version that searches over a large distance
     #
-    def do_best_move(self):
-        # Start with random move
-        best_move = None
-        best_score = 30#-maxsize
-        search_distance = 0
-        max_search_distance = 50
-        while best_move is None and search_distance < max_search_distance:
-            search_distance += 1
-            # Look for the best move while searching further and further until we find a decent direction
-            for move, offset_x, offset_y in self.MOVES:
-                score = self.get_move_score(offset_x * search_distance, offset_y * search_distance)
-                if score > best_score:
-                    best_move = move
-                    best_score = score
-        #print "Doing move", best_move, "with score =", best_score
-        self.do_move(best_move)
+    # def do_best_move(self):
+    #     # Start with random move
+    #     best_move = None
+    #     best_score = 30#-maxsize
+    #     search_distance = 0
+    #     max_search_distance = 50
+    #     while best_move is None and search_distance < max_search_distance:
+    #         search_distance += 1
+    #         # Look for the best move while searching further and further until we find a decent direction
+    #         for move, offset_x, offset_y in self.MOVES:
+    #             score = self.get_move_score(offset_x * search_distance, offset_y * search_distance)
+    #             if score > best_score:
+    #                 best_move = move
+    #                 best_score = score
+    #     #print "Doing move", best_move, "with score =", best_score
+    #     self.do_move(best_move)
 
+    # Best move that searches only the immediate move options
+    #
     # def do_best_move(self):
     #     # Start with random move
     #     best_move = None
@@ -91,14 +103,13 @@ class SearchDrone(Drone):
                 if not(0 < x <= self.simulator.width and 0 < y <= self.simulator.height):
                     # Huge negative for going out of bounds
                     score -= 100
-                elif self.simulator.map[x][y] == Simulator.TILE_UNEXPLORED:
-                    score += 1
+                elif 0 <= self.simulator.map[x][y] <= 1:
+                    # Unexplored tiles that are at 0 will now
+                    score += (self.simulator.map[x][y] * 2) + 1
                 elif self.simulator.map[x][y] < 0:
-                    # Explored tiles are -1 < 0 so if we take -(-0.5) + our score we get a nice
-                    # decay and are guided back to areas we haven't explored in a while
-                    #
-                    # Also, weight it to be half as effective
-                    score += (-self.simulator.map[x][y]) * .5
+                    # Explored tiles are -1 < 0 so decay the tiles from -1 (explored) to 0 (unexplored).
+                    # We should be guided back to areas we haven't explored in a while
+                    score += 1 - ((-self.simulator.map[x][y]) / 1)
             except IndexError:
                 pass
         return score
@@ -133,5 +144,6 @@ class ManualAIExperiment(Simulator):
                         found = True
 
                 self._decay_map()
+                self._gravity_map()
 
             self._draw()
