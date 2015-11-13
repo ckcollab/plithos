@@ -153,9 +153,9 @@ class Simulator(object):
     TILE_OUT_OF_BOUNDS = None
     TILE_EXPLORED = -1
     TILE_UNEXPLORED = 0
-    TILE_DRONE = 1
-    TILE_OBJECTIVE = 2
-    TILE_SENSOR_RADIUS = 4  # may not be used. could put our sensor radius around the drone in the state map...
+    TILE_DRONE = 2
+    TILE_OBJECTIVE = 4
+    TILE_SENSOR_RADIUS = 8  # may not be used. could put our sensor radius around the drone in the state map...
                             # but might not be that useful....
 
     def __init__(self, width=40, height=40, sensor_radius=4, drone_count=1):
@@ -237,10 +237,10 @@ class Simulator(object):
 
         pygame.display.flip()
 
-    def _gravity_map(self):
+    def apply_map_gravity(self):
         # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
         # reward.
-        gravity_rate = 0.001
+        gravity_rate = 0.2
         map_copy = np.array(self.map)
 
         # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
@@ -263,15 +263,18 @@ class Simulator(object):
                 #                     self.map[x + ix][y + iy] += gravity_rate * gravity_rate_modifier
                 #                 except IndexError:
                 #                     pass
-                if map_copy[x][y] < 1:
-                    # Only increase a tile to around 1
-                    for ix in (-1, 1):
-                        for iy in (-1, 1):
+
+                # Look for explored tiles and pad the edges next to unexplored areas to be more valuable
+                if map_copy[x][y] < 0:
+                    for ix in (-20, 20):
+                        for iy in (-20, 20):
                             try:
                                 if self.map[x + ix][y + iy] >= 0:
-                                    self.map[x][y] += gravity_rate
+                                    self.map[x][y] += gravity_rate * (self.map[x + ix][y + iy] + 1)
                             except IndexError:
                                 pass
+
+                    print "gravity rated=",self.map[x][y]
 
         # Then edit the display to show the changes
         for y in xrange(self.height):
@@ -280,7 +283,7 @@ class Simulator(object):
                     if self.map[x][y] > 1:
                         # Max the tile out at 1
                         self.map[x][y] = 1
-                    # Tile will be from -1 < 0 so -(-1) * 100 will give us a nice degrading in color
+                    # Tile will be from 0 > 1 so 0 through 1 * 100 will give us a nice increase in green
                     weighted_color = (0, int(100 * self.map[x][y]), 0)
 
                     self.explored_layer.fill(
@@ -288,9 +291,9 @@ class Simulator(object):
                         ((x - 1, y - 1), (1, 1))
                     )
 
-    def _decay_map(self):
+    def apply_map_decay(self):
         # Explored areas will 'decay' back to unexplored eventually by using this function repeatedly
-        decay_rate = 0.0005
+        decay_rate = 0.00005
 
         for y in xrange(self.height):
             for x in xrange(self.width):

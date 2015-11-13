@@ -106,11 +106,14 @@ class SearchDrone(Drone):
                     score -= 100
                 elif 0 <= self.simulator.map[x][y] <= 1:
                     # Unexplored tiles that are at 0 will now
-                    score += (self.simulator.map[x][y] * 2) + 1
+                    score += (self.simulator.map[x][y]) + 1
                 elif self.simulator.map[x][y] < 0:
                     # Explored tiles are -1 < 0 so decay the tiles from -1 (explored) to 0 (unexplored).
                     # We should be guided back to areas we haven't explored in a while
-                    score += math.exp(self.simulator.map[x][y])
+                    score += math.exp(self.simulator.map[x][y]) / 2
+                elif self.simulator.map[x][y] == Simulator.TILE_DRONE:
+                    # We're close to another drone, move away
+                    score -= 1
             except IndexError:
                 pass
         return score
@@ -132,9 +135,11 @@ class ManualAIExperiment(Simulator):
     def start(self):
         self.init_game()
 
+        counter = 0
         found = False
 
         while True:
+            counter += 1
             self._check_pygame_events()
 
             if not found:
@@ -144,7 +149,8 @@ class ManualAIExperiment(Simulator):
                         print "Found ya buddy!!"
                         found = True
 
-                self._decay_map()
-                #self._gravity_map()
+                self.apply_map_decay()
+                if (counter % 50) == 0:
+                    self.apply_map_gravity()
 
             self._draw()
