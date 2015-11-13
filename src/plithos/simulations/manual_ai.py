@@ -1,3 +1,4 @@
+import math
 import random
 import pygame
 from pygame import *
@@ -109,7 +110,7 @@ class SearchDrone(Drone):
                 elif self.simulator.map[x][y] < 0:
                     # Explored tiles are -1 < 0 so decay the tiles from -1 (explored) to 0 (unexplored).
                     # We should be guided back to areas we haven't explored in a while
-                    score += 1 - ((-self.simulator.map[x][y]) / 1)
+                    score += math.exp(self.simulator.map[x][y])
             except IndexError:
                 pass
         return score
@@ -144,6 +145,6 @@ class ManualAIExperiment(Simulator):
                         found = True
 
                 self._decay_map()
-                self._gravity_map()
+                #self._gravity_map()
 
             self._draw()

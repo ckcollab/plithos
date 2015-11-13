@@ -85,7 +85,10 @@ class Drone(Entity):
         '''Called after executing an action'''
         # Before anything else remove our drone tile from state map
         try:
-            self.simulator.map[self.x][self.y] = Simulator.TILE_EXPLORED
+            if self.simulator.map[self.x][self.y] < 0:
+                self.simulator.map[self.x][self.y] -= 1
+            else:
+                self.simulator.map[self.x][self.y] = Simulator.TILE_EXPLORED
         except IndexError:
             pass
 
@@ -237,7 +240,7 @@ class Simulator(object):
     def _gravity_map(self):
         # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
         # reward.
-        gravity_rate = 0.01
+        gravity_rate = 0.001
         map_copy = np.array(self.map)
 
         # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
