@@ -240,7 +240,7 @@ class Simulator(object):
     def apply_map_gravity(self):
         # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
         # reward.
-        gravity_rate = 0.2
+        gravity_rate = 0.05
         map_copy = np.array(self.map)
 
         # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
@@ -266,15 +266,15 @@ class Simulator(object):
 
                 # Look for explored tiles and pad the edges next to unexplored areas to be more valuable
                 if map_copy[x][y] < 0:
-                    for ix in (-20, 20):
-                        for iy in (-20, 20):
+                    for ix in (-5, 5):
+                        for iy in (-5, 5):
                             try:
-                                if self.map[x + ix][y + iy] >= 0:
+                                if -1 < self.map[x + ix][y + iy] < 1:
                                     self.map[x][y] += gravity_rate * (self.map[x + ix][y + iy] + 1)
                             except IndexError:
                                 pass
 
-                    print "gravity rated=",self.map[x][y]
+                    #print "gravity rated=",self.map[x][y]
 
         # Then edit the display to show the changes
         for y in xrange(self.height):

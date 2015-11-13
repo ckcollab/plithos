@@ -113,7 +113,7 @@ class SearchDrone(Drone):
                     score += math.exp(self.simulator.map[x][y]) / 2
                 elif self.simulator.map[x][y] == Simulator.TILE_DRONE:
                     # We're close to another drone, move away
-                    score -= 1
+                    score -= 5
             except IndexError:
                 pass
         return score
@@ -150,7 +150,7 @@ class ManualAIExperiment(Simulator):
                         found = True
 
                 self.apply_map_decay()
-                if (counter % 50) == 0:
-                    self.apply_map_gravity()
+                # if (counter % 50) == 0:
+                #     self.apply_map_gravity()
 
             self._draw()
