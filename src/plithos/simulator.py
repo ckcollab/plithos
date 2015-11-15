@@ -1,3 +1,4 @@
+import math
 import numpy as np
 import pygame
 
@@ -93,10 +94,10 @@ class Drone(Entity):
             pass
 
         for x, y in self.get_tiles_within_sensor_radius():
-            # self.simulator.explored_layer.fill(
-            #     Simulator.EXPLORED_MAP_COLOR,
-            #     ((x - 1, y - 1), (1, 1))
-            # )
+            self.simulator.explored_layer.fill(
+                Simulator.EXPLORED_MAP_COLOR,
+                ((x - 1, y - 1), (1, 1))
+            )
             try:
                 self.simulator.map[x][y] = Simulator.TILE_EXPLORED
             except IndexError:
@@ -240,7 +241,7 @@ class Simulator(object):
     def apply_map_gravity(self):
         # Unexplored areas will grow in interest, where there is more unexplored territory there is greater
         # reward.
-        gravity_rate = 0.05
+        gravity_rate = 0.2
         map_copy = np.array(self.map)
 
         # First iterate over all elements and modify them, wait to change pixels that will be changed anyway
@@ -265,12 +266,19 @@ class Simulator(object):
                 #                     pass
 
                 # Look for explored tiles and pad the edges next to unexplored areas to be more valuable
+                search_distance = 3
                 if map_copy[x][y] < 0:
-                    for ix in (-5, 5):
-                        for iy in (-5, 5):
+                    for ix in range(-search_distance, search_distance):
+                        for iy in range(-search_distance, search_distance):
                             try:
-                                if -1 < self.map[x + ix][y + iy] < 1:
-                                    self.map[x][y] += gravity_rate * (self.map[x + ix][y + iy] + 1)
+                                if -1 <= self.map[x + ix][y + iy] <= 1:
+                                    pre_gravity = gravity = gravity_rate * (self.map[x + ix][y + iy] + 1)
+                                    distance = hypot(0 - ix, 0 - iy)
+                                    gravity /= distance
+                                    #print "pre_gravity:", pre_gravity, "; distance:", distance, "; gravity:", gravity
+
+
+                                    self.map[x][y] += gravity
                             except IndexError:
                                 pass
 

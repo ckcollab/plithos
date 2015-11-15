@@ -138,6 +138,13 @@ class ManualAIExperiment(Simulator):
         counter = 0
         found = False
 
+        # import os
+        # if os.path.exists('src/image_dump'):
+        #     import shutil
+        #     shutil.rmtree('src/image_dump')
+        #
+        # os.mkdir('src/image_dump')
+
         while True:
             counter += 1
             self._check_pygame_events()
@@ -148,9 +155,13 @@ class ManualAIExperiment(Simulator):
                     if drone.is_an_objective_in_sensor_range():
                         print "Found ya buddy!!"
                         found = True
+                        exit()
 
-                self.apply_map_decay()
-                # if (counter % 50) == 0:
-                #     self.apply_map_gravity()
+                #self.apply_map_decay()
+                if (counter % 50) == 0:
+                    print "applying gravity"
+                    self.apply_map_gravity()
 
             self._draw()
+
+            # pygame.image.save(self.screen, 'src/image_dump/%s.png' % counter)
