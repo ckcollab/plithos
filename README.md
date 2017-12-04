@@ -16,7 +16,7 @@ Install pygame requirements
 
 Clone this repo and move to the dir
 
-    git clone git@github.com:dev-coop/plithos.git && cd plithos
+    git clone https://github.com/ckcollab/plithos.git && cd plithos
 
 Install python requirements
 
